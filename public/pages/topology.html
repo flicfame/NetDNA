@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — Network Topology</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/shared.css">
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --topo-bg:     #F5F7FA;
+  --topo-card:   #FFFFFF;
+  --topo-border: #E0E4EA;
+  --topo-text:   #1D1D1D;
+  --topo-dim:    #9E9EA2;
+  --topo-mid:    #58585B;
+  --topo-hi:     #333333;
+  --topo-white:  #FFFFFF;
+  --topo-blue:   #049FD9;
+  --topo-dk:     #004BAF;
+  --topo-lt:     rgba(4,159,217,.08);
+  --topo-green:  #00853E;
+  --topo-red:    #E2231A;
+  --topo-orange: #F7810A;
+  --topo-purple: #6B5FCF;
+  --mono:        'Inter', monospace;
+  --panel-w:     340px;
+  --bar-h:       30px;
+}
+
+body { overflow:hidden; }
+
+.canvas-area {
+  position:fixed; top:92px; bottom:var(--bar-h);
+  left:0; right:var(--panel-w);
+  overflow:hidden; cursor:grab;
+  background:var(--topo-bg);
+}
+.canvas-area:active { cursor:grabbing; }
+
+.canvas-area::before {
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background-image:radial-gradient(circle, rgba(4,159,217,.08) 1px, transparent 1px);
+  background-size:30px 30px;
+  background-position:15px 15px;
+}
+
+.canvas-area::after {
+  content:''; position:absolute; pointer-events:none;
+  top:-80px; left:50%; transform:translateX(-50%);
+  width:600px; height:300px;
+  background:radial-gradient(ellipse, rgba(4,159,217,.06) 0%, transparent 70%);
+}
+
+#topoSvg {
+  position:absolute; top:0; left:0;
+  transform-origin:0 0;
+}
+
+.topo-toolbar {
+  position:fixed; top:53px; left:0; right:0; height:39px;
+  background:var(--topo-card);
+  border-bottom:1px solid var(--topo-border);
+  display:flex; align-items:center; gap:10px;
+  padding:0 18px; z-index:190;
+}
+
+.search-wrap { position:relative; width:260px; }
+.search-wrap input {
+  width:100%; background:var(--topo-bg); border:1px solid var(--topo-border);
+  border-radius:5px; padding:5px 10px 5px 28px;
+  font-family:var(--mono); font-size:11px; color:var(--topo-text);
+  outline:none; transition:border .2s;
+}
+.search-wrap input:focus { border-color:var(--topo-blue); }
+.search-wrap input::placeholder { color:var(--topo-dim); }
+.search-ico {
+  position:absolute; left:9px; top:50%; transform:translateY(-50%);
+  color:var(--topo-dim); font-size:12px; pointer-events:none;
+}
+
+.filters { display:flex; gap:4px; }
+.fp {
+  font-size:10px; font-weight:600; padding:4px 10px; border-radius:20px; cursor:pointer;
+  border:1px solid var(--topo-border); background:none; color:var(--topo-mid);
+  text-transform:uppercase; letter-spacing:.4px;
+  transition:all .15s; white-space:nowrap;
+}
+.fp:hover { color:var(--topo-text); border-color:#C6C7CA; }
+.fp.active { background:var(--topo-lt); border-color:var(--topo-blue); color:var(--topo-blue); }
+.fp.f-red.active   { background:rgba(226,35,26,.08); border-color:var(--topo-red); color:var(--topo-red); }
+.fp.f-green.active { background:rgba(0,133,62,.08); border-color:var(--topo-green); color:var(--topo-green); }
+
+.legend { display:flex; gap:10px; align-items:center; }
+.li {
+  display:flex; align-items:center; gap:5px;
+  font-size:10px; color:var(--topo-mid); font-weight:500;
+}
+.li-dot { width:6px; height:6px; border-radius:50%; }
+
+.zoom-row {
+  display:flex; align-items:center; gap:2px;
+  background:var(--topo-bg); border:1px solid var(--topo-border);
+  border-radius:5px; padding:2px; margin-left:auto;
+}
+.zb {
+  width:24px; height:24px; background:none; border:none;
+  border-radius:4px; color:var(--topo-mid); cursor:pointer;
+  font-size:14px; display:flex; align-items:center; justify-content:center;
+  transition:all .13s;
+}
+.zb:hover { background:var(--topo-border); color:var(--topo-text); }
+.zv {
+  font-size:10px; font-weight:600; color:var(--topo-mid);
+  min-width:36px; text-align:center; padding:0 4px;
+}
+
+.panel {
+  position:fixed; top:92px; bottom:var(--bar-h);
+  right:0; width:var(--panel-w);
+  background:var(--topo-card); border-left:1px solid var(--topo-border);
+  display:flex; flex-direction:column;
+  transform:translateX(0);
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
+  z-index:100;
+}
+.panel.hidden { transform:translateX(var(--panel-w)); }
+
+.panel-head {
+  padding:16px 18px 14px;
+  border-bottom:1px solid var(--topo-border);
+  flex-shrink:0;
+}
+.ph-row1 {
+  display:flex; align-items:center; gap:12px; margin-bottom:12px;
+}
+.ph-icon {
+  width:42px; height:42px; border-radius:10px;
+  background:var(--topo-lt); border:1px solid var(--topo-border);
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; flex-shrink:0;
+}
+.ph-name { font-size:16px; font-weight:700; color:var(--topo-text); line-height:1.15; }
+.ph-type { font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--topo-mid); margin-top:2px; font-weight:600; }
+.ph-close {
+  width:26px; height:26px; border-radius:5px; margin-left:auto;
+  background:none; border:1px solid var(--topo-border);
+  color:var(--topo-mid); cursor:pointer; font-size:13px;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .13s; flex-shrink:0;
+}
+.ph-close:hover { background:var(--topo-bg); color:var(--topo-text); }
+
+.ph-row2 { display:flex; align-items:center; justify-content:space-between; }
+.status-pill {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:4px 10px; border-radius:20px;
+  font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.5px;
+}
+.sp-ok   { background:rgba(0,133,62,.08); border:1px solid rgba(0,133,62,.2); color:var(--topo-green); }
+.sp-warn { background:rgba(247,129,10,.08); border:1px solid rgba(247,129,10,.2); color:var(--topo-orange); }
+.sp-crit { background:rgba(226,35,26,.08); border:1px solid rgba(226,35,26,.2); color:var(--topo-red); }
+.sp-dot  { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.risk-block { text-align:right; }
+.risk-label { font-size:9px; text-transform:uppercase; letter-spacing:.8px; color:var(--topo-dim); margin-bottom:2px; font-weight:600; }
+.risk-num   { font-size:26px; font-weight:800; line-height:1; letter-spacing:-1px; }
+.risk-bar   { width:60px; height:3px; background:var(--topo-bg); border-radius:2px; margin-top:4px; overflow:hidden; }
+.risk-fill  { height:100%; border-radius:2px; transition:width .8s ease; }
+
+.panel-body { flex:1; overflow-y:auto; }
+.panel-body::-webkit-scrollbar { width:3px; }
+.panel-body::-webkit-scrollbar-thumb { background:#C6C7CA; border-radius:2px; }
+
+.psec { padding:14px 18px; border-bottom:1px solid var(--topo-border); }
+.psec:last-child { border-bottom:none; }
+.psec-title {
+  font-size:9px; font-weight:700;
+  text-transform:uppercase; letter-spacing:1px; color:var(--topo-dim);
+  margin-bottom:10px;
+}
+
+.kv { display:flex; align-items:baseline; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(0,0,0,.04); }
+.kv:last-child { border-bottom:none; }
+.kk { font-size:11px; color:var(--topo-mid); }
+.kv-v { font-size:11px; font-weight:500; color:var(--topo-text); text-align:right; max-width:195px; word-break:break-word; }
+.kv-v.c  { color:var(--topo-blue); }
+.kv-v.g  { color:var(--topo-green); }
+.kv-v.r  { color:var(--topo-red); font-weight:600; }
+.kv-v.o  { color:var(--topo-orange); }
+.kv-v.w  { color:var(--topo-text); font-weight:700; }
+
+.tag {
+  display:inline-block; font-size:9px; font-weight:600;
+  padding:2px 7px; border-radius:3px; text-transform:uppercase; letter-spacing:.3px;
+}
+.tag-cyan   { background:var(--topo-lt); color:var(--topo-blue); border:1px solid rgba(4,159,217,.2); }
+.tag-red    { background:rgba(226,35,26,.08); color:var(--topo-red); border:1px solid rgba(226,35,26,.2); }
+.tag-green  { background:rgba(0,133,62,.08); color:var(--topo-green); border:1px solid rgba(0,133,62,.2); }
+.tag-orange { background:rgba(247,129,10,.08); color:var(--topo-orange); border:1px solid rgba(247,129,10,.2); }
+.tag-purple { background:rgba(107,95,207,.08); color:var(--topo-purple); border:1px solid rgba(107,95,207,.2); }
+
+.alert-row {
+  display:flex; gap:9px; padding:8px 10px; border-radius:5px;
+  background:var(--topo-bg); border:1px solid var(--topo-border);
+  margin-bottom:5px;
+}
+.alert-row.crit { background:rgba(226,35,26,.04); border-color:rgba(226,35,26,.2); }
+.alert-row.warn { background:rgba(247,129,10,.04); border-color:rgba(247,129,10,.15); }
+.al-bar  { width:3px; border-radius:2px; flex-shrink:0; min-height:40px; }
+.al-text { font-size:11px; color:var(--topo-hi); line-height:1.5; }
+.al-meta { display:flex; gap:6px; align-items:center; margin-top:5px; flex-wrap:wrap; }
+.al-time { font-size:10px; color:var(--topo-dim); }
+
+.conn-row {
+  display:flex; align-items:center; gap:8px; padding:5px 0;
+  border-bottom:1px solid rgba(0,0,0,.04); font-size:11px;
+}
+.conn-row:last-child { border-bottom:none; }
+.conn-arrow { font-size:10px; flex-shrink:0; }
+.conn-label { font-size:10px; margin-left:auto; font-weight:500; }
+
+.empty-panel {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  height:100%; gap:12px; padding:40px 24px; text-align:center;
+}
+.empty-icon { font-size:36px; opacity:.2; }
+.empty-title { font-size:15px; font-weight:700; color:var(--topo-mid); }
+.empty-sub { font-size:12px; color:var(--topo-dim); }
+
+.nc-widget {
+  position:fixed; top:106px; left:14px;
+  background:var(--topo-card); border:1px solid var(--topo-border);
+  border-radius:8px; padding:12px 14px;
+  z-index:90; pointer-events:none; min-width:120px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+}
+.nc-row {
+  display:flex; align-items:center; gap:7px;
+  font-size:10px; color:var(--topo-mid); font-weight:500;
+  text-transform:uppercase; letter-spacing:.5px;
+  padding:3px 0;
+}
+.nc-v { margin-left:auto; font-size:16px; font-weight:700; color:var(--topo-text); }
+.nc-sep { border:none; border-top:1px solid var(--topo-border); margin:6px 0; }
+
+.tooltip {
+  position:fixed; pointer-events:none;
+  background:var(--topo-card); border:1px solid var(--topo-border);
+  border-radius:6px; padding:10px 13px;
+  font-size:11px;
+  z-index:300; opacity:0; transition:opacity .12s;
+  box-shadow:0 4px 16px rgba(0,0,0,.1);
+  max-width:210px;
+}
+.tooltip.show { opacity:1; }
+.tt-name { font-size:13px; font-weight:700; color:var(--topo-text); margin-bottom:4px; }
+.tt-ip   { font-size:10px; font-weight:600; color:var(--topo-blue); margin-bottom:3px; }
+.tt-info { font-size:10px; color:var(--topo-mid); line-height:1.5; }
+
+.topo-statusbar {
+  position:fixed; bottom:0; left:0; right:0; height:var(--bar-h);
+  background:var(--topo-dk); border-top:1px solid rgba(255,255,255,.1);
+  display:flex; align-items:center; padding:0 18px; gap:18px;
+  z-index:200;
+}
+.sb-item {
+  display:flex; align-items:center; gap:5px;
+  font-size:10px; color:rgba(255,255,255,.6);
+  white-space:nowrap;
+}
+.sb-item b { color:#fff; font-weight:600; margin-left:3px; }
+.sb-dot { width:5px; height:5px; border-radius:50%; }
+.sb-right { margin-left:auto; font-size:10px; color:rgba(255,255,255,.5); }
+.pulse { animation:pulse 1.5s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.nc-widget { animation:fadeIn .4s ease; }
+</style>
+</head>
+<body>
+
+<div id="navMount"></div>
+
+<div class="topo-toolbar">
+  <div class="search-wrap">
+    <span class="search-ico">⌕</span>
+    <input id="searchInput" type="text" placeholder="Search device, IP, user, VLAN..." data-testid="input-topology-search">
+  </div>
+
+  <div class="filters">
+    <button class="fp active" onclick="setFilter(this,'all')" data-testid="button-filter-all">All</button>
+    <button class="fp" onclick="setFilter(this,'switch')" data-testid="button-filter-switches">Switches</button>
+    <button class="fp" onclick="setFilter(this,'server')" data-testid="button-filter-servers">Servers</button>
+    <button class="fp" onclick="setFilter(this,'endpoint')" data-testid="button-filter-endpoints">Endpoints</button>
+    <button class="fp f-green" onclick="setFilter(this,'ot')" data-testid="button-filter-ot">OT / ICS</button>
+    <button class="fp f-red" onclick="setFilter(this,'flagged')" data-testid="button-filter-flagged">⚠ Flagged</button>
+  </div>
+
+  <div style="width:1px;height:20px;background:var(--topo-border)"></div>
+
+  <div class="legend">
+    <div class="li"><div class="li-dot" style="background:var(--topo-green)"></div>Online</div>
+    <div class="li"><div class="li-dot" style="background:var(--topo-orange)"></div>Warn</div>
+    <div class="li"><div class="li-dot" style="background:var(--topo-red)"></div>Critical</div>
+    <div class="li"><div class="li-dot" style="background:var(--topo-blue);opacity:.6"></div>OT</div>
+  </div>
+
+  <div class="zoom-row">
+    <button class="zb" onclick="adjustZoom(-.15)" title="Zoom out" data-testid="button-zoom-out">−</button>
+    <div class="zv" id="zoomVal">100%</div>
+    <button class="zb" onclick="adjustZoom(.15)" title="Zoom in" data-testid="button-zoom-in">+</button>
+    <button class="zb" onclick="resetView()" title="Fit" style="font-size:11px;border-left:1px solid var(--topo-border)" data-testid="button-zoom-fit">⊡</button>
+  </div>
+</div>
+
+<div class="nc-widget">
+  <div class="nc-row"><div class="sb-dot" style="background:var(--topo-green)"></div>Online<span class="nc-v" id="ncOk">—</span></div>
+  <div class="nc-row"><div class="sb-dot" style="background:var(--topo-orange)"></div>Warning<span class="nc-v" id="ncWn">—</span></div>
+  <div class="nc-row"><div class="sb-dot" style="background:var(--topo-red)"></div>Critical<span class="nc-v" id="ncCr">—</span></div>
+  <hr class="nc-sep">
+  <div class="nc-row">Total<span class="nc-v" id="ncTt">—</span></div>
+</div>
+
+<div class="canvas-area" id="canvasArea">
+  <svg id="topoSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+
+<div class="tooltip" id="tooltip">
+  <div class="tt-name" id="ttName"></div>
+  <div class="tt-ip" id="ttIp"></div>
+  <div class="tt-info" id="ttInfo"></div>
+</div>
+
+<div class="panel hidden" id="panel">
+  <div class="panel-head">
+    <div class="ph-row1">
+      <div class="ph-icon" id="phIcon"></div>
+      <div>
+        <div class="ph-name" id="phName">Select a device</div>
+        <div class="ph-type" id="phType">Click any node on the map</div>
+      </div>
+      <button class="ph-close" onclick="closePanel()" data-testid="button-close-panel">✕</button>
+    </div>
+    <div class="ph-row2" id="phMeta" style="display:none">
+      <span id="phStatus"></span>
+      <div class="risk-block" id="phRiskBlock"></div>
+    </div>
+  </div>
+  <div class="panel-body" id="panelBody">
+    <div class="empty-panel">
+      <div class="empty-icon">◎</div>
+      <div class="empty-title">No device selected</div>
+      <div class="empty-sub">Click any node on the topology map to view device details, alerts, and connections</div>
+    </div>
+  </div>
+</div>
+
+<div class="topo-statusbar">
+  <div class="sb-item"><div class="sb-dot pulse" style="background:var(--topo-green)"></div>Live<b id="sbTime">—</b></div>
+  <div class="sb-item"><div class="sb-dot" style="background:var(--topo-blue)"></div>NetDNA Lab<b>EVE-NG</b></div>
+  <div class="sb-item"><div class="sb-dot" style="background:var(--topo-blue)"></div>NetFlow<b>UDP 2055</b></div>
+  <div class="sb-item"><div class="sb-dot" style="background:var(--topo-blue)"></div>ISE pxGrid<b>10.100.0.20</b></div>
+  <div class="sb-item"><div class="sb-dot" style="background:var(--topo-red)"></div>4 Anomalies<b>Active</b></div>
+  <div class="sb-right">NetDNA v0.1 · Cisco-Native Network Security Monitoring</div>
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script>
+if (!Auth.guard()) throw 0;
+document.getElementById('navMount').innerHTML = renderNav('Topology');
+document.head.insertAdjacentHTML('beforeend', `<style>${NAV_CSS}</style>`);
+
+const NODES = [
+  {
+    id:'internet', label:'Internet', ip:'0.0.0.0/0',
+    type:'cloud', group:'net', icon:'🌐', status:'online',
+    x:600, y:55,
+    detail:{ 'Type':'External Network','Route':'203.0.113.0/30' },
+  },
+  {
+    id:'rtr-wan', label:'RTR-WAN-01', ip:'10.0.0.2',
+    type:'router', group:'net', icon:'⬡', status:'online',
+    x:600, y:165,
+    detail:{ 'Model':'Cisco IOSv 15.9','Role':'WAN / NAT simulation','Gi0/0':'203.0.113.2','Gi0/1':'10.0.0.2' },
+  },
+  {
+    id:'fw-edge', label:'FW-EDGE-01', ip:'10.0.0.1',
+    type:'firewall', group:'net', icon:'◈', status:'online',
+    x:600, y:285,
+    detail:{ 'Model':'Cisco ASAv 9.18','Outside':'203.0.113.1','Inside':'10.0.0.1','VPN Pool':'172.16.100.0/24','VPN Protocol':'AnyConnect SSL','Policy':'NETDNA-VPN-GRP' },
+  },
+  {
+    id:'sw-core-01', label:'SW-CORE-01', ip:'10.100.0.1',
+    type:'switch', group:'it', icon:'◫', status:'online',
+    vlan:'VLAN-10/20/30/40', x:440, y:415,
+    detail:{ 'Model':'Cisco Catalyst 9300v','Role':'L3 Core — HSRP Active','OSPF':'Router-ID 1.1.1.1','NetFlow':'→ 10.200.0.100:2055','Flows / sec':'42.3','SVIs':'VLAN 10,20,30,40,50,99,200' },
+  },
+  {
+    id:'sw-core-02', label:'SW-CORE-02', ip:'10.100.0.2',
+    type:'switch', group:'it', icon:'◫', status:'online',
+    vlan:'Redundant', x:760, y:415,
+    detail:{ 'Model':'Cisco Catalyst 9300v','Role':'L3 Core — HSRP Standby','OSPF':'Router-ID 2.2.2.2' },
+  },
+  {
+    id:'sw-acc-it', label:'SW-ACC-IT', ip:'10.10.0.1',
+    type:'switch', group:'it', icon:'◫', status:'online',
+    vlan:'VLAN-10 IT-Ops', x:140, y:545,
+    detail:{ 'Model':'Cisco IOSvL2','VLAN':'10 — IT-Ops','802.1X':'Enabled','MAB':'Enabled','Endpoints':'2 active' },
+  },
+  {
+    id:'sw-acc-fin', label:'SW-ACC-FIN', ip:'10.20.0.1',
+    type:'switch', group:'it', icon:'◫', status:'warn',
+    vlan:'VLAN-20 Finance', x:360, y:545,
+    detail:{ 'Model':'Cisco IOSvL2','VLAN':'20 — Finance','802.1X':'Enabled','Endpoints':'2 connected','⚠ Alert':'Anomalous lateral movement' },
+    alerts:[{ sev:'warn', text:'j.harris — lateral movement VLAN-20 → VLAN-40', time:'3m ago', mitre:'T1021' }],
+  },
+  {
+    id:'sw-acc-hr', label:'SW-ACC-HR', ip:'10.30.0.1',
+    type:'switch', group:'it', icon:'◫', status:'online',
+    vlan:'VLAN-30 HR', x:590, y:545,
+    detail:{ 'Model':'Cisco IOSvL2','VLAN':'30 — HR','Endpoints':'1 active' },
+  },
+  {
+    id:'sw-acc-dev', label:'SW-ACC-DEV', ip:'10.40.0.1',
+    type:'switch', group:'it', icon:'◫', status:'online',
+    vlan:'VLAN-40 Dev', x:820, y:545,
+    detail:{ 'Model':'Cisco IOSvL2','VLAN':'40 — Dev','Endpoints':'2 active' },
+  },
+  {
+    id:'ise-01', label:'ISE-01', ip:'10.100.0.20',
+    type:'server', group:'it', icon:'🔐', status:'online',
+    vlan:'MGMT-100', x:1010, y:415,
+    detail:{ 'Model':'Cisco ISE 3.1','RADIUS':'Port 1812 / 1813','pxGrid':'Port 8910','Active Sessions':'47','SGTs Defined':'8','ANC Policies':'2 (Quarantine, Warn)' },
+  },
+  {
+    id:'win-dc', label:'WIN-DC-01', ip:'10.100.0.10',
+    type:'server', group:'it', icon:'🏢', status:'online',
+    vlan:'MGMT-100', x:1010, y:545,
+    detail:{ 'OS':'Windows Server 2019','Domain':'netdna.lab','DNS':'10.100.0.10','Users':'7 accounts','OUs':'Finance, HR, IT-Ops, Dev' },
+  },
+  {
+    id:'netdna', label:'NETDNA-SRV', ip:'10.200.0.100',
+    type:'server', group:'net', icon:'⬢', status:'online',
+    vlan:'VLAN-200 Collector', x:600, y:655,
+    detail:{ 'OS':'Ubuntu 22.04','App':'NetDNA v4 (Docker)','NetFlow':'UDP 2055','pxGrid':'→ 10.100.0.20','Modbus SPAN':'eth1 mirror','Syslog':'UDP 514','Uptime':'14h 32m' },
+  },
+  {
+    id:'ep-asmith', label:'a.smith', ip:'10.10.0.50',
+    type:'endpoint', group:'it', icon:'💻', status:'online',
+    vlan:'VLAN-10 IT-Ops', user:'a.smith (IT-Ops)', x:65, y:665,
+    detail:{ 'OS':'Windows 10 Pro','User':'a.smith','Dept':'IT Operations','VLAN':'10','SGT':'SGT-IT-Ops','Auth':'802.1X EAP-TLS','Posture':'Compliant ✓','Risk Score':'18 / 100' },
+    alerts:[],
+  },
+  {
+    id:'ep-jharris', label:'j.harris', ip:'10.20.0.50',
+    type:'endpoint', group:'it', icon:'💻', status:'critical',
+    vlan:'VLAN-20 Finance', user:'j.harris (Finance)', x:275, y:665,
+    detail:{ 'OS':'Windows 10 Pro','User':'j.harris','Dept':'Finance','VLAN':'20','SGT':'SGT-Finance → SGT-Quarantine','Auth':'802.1X PEAP','Posture':'Non-Compliant ✗','MAC':'AA:BB:CC:11:22:33','Risk Score':'91 / 100' },
+    alerts:[
+      { sev:'crit', text:'Impossible travel: London → Moscow (2,500 km in 2h)', time:'5m ago', mitre:'T1078' },
+      { sev:'crit', text:'Lateral movement VLAN-20 → VLAN-40 via SMB / SSH', time:'3m ago', mitre:'T1021' },
+    ],
+  },
+  {
+    id:'kali', label:'KALI-ATK', ip:'10.20.0.99',
+    type:'endpoint', group:'it', icon:'☠', status:'critical',
+    vlan:'VLAN-20 Finance', user:'attacker', x:465, y:665,
+    detail:{ 'OS':'Kali Linux 2024','Role':'Attacker (lab simulation)','VLAN':'20 — Unauthorised','SGT':'SGT-Guest (MAB fallback)','Auth':'MAB','Risk Score':'96 / 100' },
+    alerts:[
+      { sev:'crit', text:'Nmap scan: 4,096 ports across 12 hosts', time:'8m ago', mitre:'T1046' },
+      { sev:'crit', text:'SMB enumeration Finance + Dev VLANs', time:'6m ago', mitre:'T1021.002' },
+      { sev:'crit', text:'Kerberoasting: 3 SPN tickets requested', time:'5m ago', mitre:'T1558' },
+    ],
+  },
+  {
+    id:'sw-ot', label:'SW-OT-CORE', ip:'192.168.101.1',
+    type:'switch', group:'ot', icon:'◫', status:'warn',
+    vlan:'OT Core', x:600, y:790,
+    detail:{ 'Model':'Cisco Catalyst IE3400','VLAN-101':'OT Control (PLCs/RTUs)','VLAN-102':'OT Supervisory (HMI)','VLAN-103':'OT Operations (Historian)','ACL':'Purdue model enforcement','SPAN':'→ NETDNA-SRV eth1','NetFlow':'→ 10.200.0.100:2055' },
+    alerts:[{ sev:'warn', text:'IT→OT boundary violation detected via j.harris', time:'4m ago', mitre:'T0866' }],
+  },
+  {
+    id:'plc-boiler', label:'PLC-BOILER-01', ip:'192.168.101.11',
+    type:'plc', group:'ot', icon:'⚙', status:'critical',
+    vlan:'VLAN-101 Control', x:265, y:940,
+    detail:{ 'Platform':'OpenPLC v3','Protocol':'Modbus/TCP :502','Vendor':'Siemens (sim)','Firmware':'3.2.1 (unmodified)','Process Tags':'temp, pressure, burner, pump','Temp Setpoint':'120°C → FORCED to 180°C','Purdue Level':'1 — Control','Risk Score':'85 / 100' },
+    alerts:[
+      { sev:'crit', text:'IT→OT: j.harris sent Modbus FC6 Write Register', time:'4m ago', mitre:'T0866' },
+      { sev:'crit', text:'47 output coils forced — boiler temp 168°C (limit 150°C)', time:'2m ago', mitre:'T0831' },
+    ],
+  },
+  {
+    id:'plc-water', label:'PLC-WATER-01', ip:'192.168.101.12',
+    type:'plc', group:'ot', icon:'⚙', status:'critical',
+    vlan:'VLAN-101 Control', x:460, y:940,
+    detail:{ 'Platform':'OpenPLC v3','Protocol':'Modbus/TCP :502','Vendor':'Allen-Bradley (sim)','Firmware':'3.2.1-MODIFIED ⚠','Process':'Water treatment','Purdue Level':'1 — Control','Risk Score':'95 / 100' },
+    alerts:[
+      { sev:'crit', text:'Unauthorised firmware write — version 3.2.1-MODIFIED', time:'6m ago', mitre:'T0839' },
+    ],
+  },
+  {
+    id:'plc-power', label:'PLC-POWER-01', ip:'192.168.101.13',
+    type:'plc', group:'ot', icon:'⚙', status:'critical',
+    vlan:'VLAN-101 Control', x:655, y:940,
+    detail:{ 'Platform':'OpenPLC v3','Protocol':'Modbus/TCP :502','Vendor':'Schneider (sim)','Process':'Power distribution','Purdue Level':'1 — Control','Risk Score':'92 / 100' },
+    alerts:[
+      { sev:'crit', text:'Rogue HMI (192.168.102.99) sending FC5 FORCE ON', time:'5m ago', mitre:'T0855' },
+    ],
+  },
+  {
+    id:'rtu', label:'RTU-SUBST-01', ip:'192.168.101.21',
+    type:'plc', group:'ot', icon:'📡', status:'warn',
+    vlan:'VLAN-101 Control', x:848, y:940,
+    detail:{ 'Platform':'OpenPLC (DNP3)','Protocol':'DNP3 :20000','Vendor':'GE Grid (sim)','Purdue Level':'1 — Control','Risk Score':'55 / 100' },
+    alerts:[{ sev:'warn', text:'DNP3 unsolicited response flood (50 msgs in 5s)', time:'9m ago', mitre:'T0815' }],
+  },
+  {
+    id:'hmi', label:'HMI-SCADA', ip:'192.168.102.11',
+    type:'scada', group:'ot', icon:'🖥', status:'online',
+    vlan:'VLAN-102 Supervisory', x:340, y:1075,
+    detail:{ 'Platform':'Python SCADA engine','Protocol':'OPC-DA, Modbus/TCP','API':'http://192.168.102.11:9001','Polling':'1 s (all PLCs)','Purdue Level':'2 — Supervisory' },
+  },
+  {
+    id:'eng-ws', label:'ENG-WS-01', ip:'192.168.102.21',
+    type:'endpoint', group:'ot', icon:'💻', status:'warn',
+    vlan:'VLAN-102 Supervisory', user:'engineer', x:545, y:1075,
+    detail:{ 'OS':'Windows 10 (OT-hardened)','Tools':'Rockwell Studio 5000','Protocol':'EtherNet/IP :44818','Purdue Level':'2 — Supervisory','Risk Score':'62 / 100' },
+    alerts:[{ sev:'warn', text:'OT subnet scan — 16 devices probed in 30s', time:'7m ago', mitre:'T0846' }],
+  },
+  {
+    id:'historian', label:'HISTORIAN-01', ip:'192.168.103.11',
+    type:'server', group:'ot', icon:'🗄', status:'critical',
+    vlan:'VLAN-103 Operations', x:760, y:1075,
+    detail:{ 'Platform':'OSIsoft PI (sim)','Protocol':'OPC-UA :4840','Role':'Process data archive','Data':'5yr operational records','Purdue Level':'3 — Operations','Risk Score':'78 / 100' },
+    alerts:[
+      { sev:'crit', text:'120 MB exfiltrated to 185.220.101.4 (C2)', time:'9m ago', mitre:'T0882' },
+    ],
+  },
+];
+
+const EDGES = [
+  ['internet',   'rtr-wan',    '',        'trunk'],
+  ['rtr-wan',    'fw-edge',    '',        'trunk'],
+  ['fw-edge',    'sw-core-01', 'OSPF',    'trunk'],
+  ['fw-edge',    'sw-core-02', '',        'trunk'],
+  ['sw-core-01', 'sw-core-02', 'HSRP',   'trunk'],
+  ['sw-core-01', 'sw-acc-it',  'VLAN10', 'access'],
+  ['sw-core-01', 'sw-acc-fin', 'VLAN20', 'access'],
+  ['sw-core-01', 'sw-acc-hr',  'VLAN30', 'access'],
+  ['sw-core-01', 'sw-acc-dev', 'VLAN40', 'access'],
+  ['sw-core-01', 'ise-01',     'RADIUS', 'mgmt'],
+  ['sw-core-01', 'netdna',     'NetFlow','data'],
+  ['sw-core-02', 'sw-acc-dev', '',       'access'],
+  ['ise-01',     'win-dc',     'LDAP',   'mgmt'],
+  ['sw-acc-it',  'ep-asmith',  '802.1X', 'access'],
+  ['sw-acc-fin', 'ep-jharris', '802.1X', 'access'],
+  ['sw-acc-fin', 'kali',       'MAB',    'access'],
+  ['sw-core-01', 'sw-ot',      'L3 OT',  'ot'],
+  ['sw-ot',      'netdna',     'SPAN',   'data'],
+  ['sw-ot',      'plc-boiler', 'Modbus', 'ot'],
+  ['sw-ot',      'plc-water',  'Modbus', 'ot'],
+  ['sw-ot',      'plc-power',  'Modbus', 'ot'],
+  ['sw-ot',      'rtu',        'DNP3',   'ot'],
+  ['sw-ot',      'hmi',        'OPC-DA', 'ot'],
+  ['sw-ot',      'eng-ws',     'EtherIP','ot'],
+  ['sw-ot',      'historian',  'OPC-UA', 'ot'],
+  ['ep-jharris', 'plc-boiler', 'Modbus ⚠', 'attack'],
+  ['kali',       'ep-asmith',  'SMB ⚠',    'attack'],
+  ['kali',       'historian',  'Exfil ⚠',  'attack'],
+];
+
+const NS   = 'http://www.w3.org/2000/svg';
+const svg  = document.getElementById('topoSvg');
+const area = document.getElementById('canvasArea');
+
+let zoom = 1, panX = 40, panY = 20;
+let isDragging = false, dragStart = {};
+let activeFilter = 'all', selectedId = null;
+
+const nodeMap = {};
+NODES.forEach(n => nodeMap[n.id] = n);
+
+const C_BLUE   = '#049FD9';
+const C_DK     = '#004BAF';
+const C_GREEN  = '#00853E';
+const C_RED    = '#E2231A';
+const C_ORANGE = '#F7810A';
+const C_PURPLE = '#6B5FCF';
+const C_NODE_BG = '#FFFFFF';
+const C_NODE_STROKE = '#D0D5DD';
+
+function statusColor(s) {
+  return s==='critical'?C_RED : s==='warn'?C_ORANGE : s==='offline'?'#9E9EA2' : C_GREEN;
+}
+
+function buildSVG() {
+  svg.innerHTML = '';
+
+  const W = Math.max(...NODES.map(n=>n.x)) + 180;
+  const H = Math.max(...NODES.map(n=>n.y)) + 120;
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+
+  const defs = mk('defs');
+  [['m-normal','#9E9EA2'],['m-attack',C_RED],
+   ['m-data',C_BLUE],['m-ot',C_GREEN],['m-mgmt',C_PURPLE]].forEach(([id,col]) => {
+    const m = mk('marker',{id,'markerWidth':'6','markerHeight':'5','refX':'5','refY':'2.5','orient':'auto','markerUnits':'strokeWidth'});
+    m.appendChild(mk('polygon',{points:'0 0, 6 2.5, 0 5',fill:col,opacity:'0.8'}));
+    defs.appendChild(m);
+  });
+  svg.appendChild(defs);
+
+  const zones = [
+    { y:20,  h:105, label:'INTERNET / WAN',          fill:'rgba(107,95,207,.04)' },
+    { y:135, h:115, label:'EDGE SECURITY',            fill:'rgba(247,129,10,.03)' },
+    { y:360, h:130, label:'CORE SWITCHING',           fill:'rgba(4,159,217,.05)' },
+    { y:490, h:180, label:'ACCESS LAYER / SERVICES',  fill:'rgba(4,159,217,.03)' },
+    { y:735, h:250, label:'OT NETWORK (Purdue L1–L2)',fill:'rgba(0,133,62,.04)' },
+    { y:990, h:175, label:'OT SUPERVISORY / HIST.',   fill:'rgba(0,133,62,.025)' },
+  ];
+
+  const zg = mk('g');
+  zones.forEach(z => {
+    zg.appendChild(mk('rect',{ x:0, y:z.y, width:W, height:z.h, fill:z.fill }));
+    zg.appendChild(mk('line',{ x1:0, y1:z.y, x2:W, y2:z.y, stroke:'rgba(0,75,175,.08)', 'stroke-width':'1' }));
+    const zt = mk('text',{ x:W-14, y:z.y+14, fill:'rgba(4,159,217,.5)', 'font-family':'Inter,sans-serif', 'font-size':'9', 'font-weight':'600', 'letter-spacing':'1.2', 'text-anchor':'end' });
+    zt.textContent = z.label;
+    zg.appendChild(zt);
+  });
+
+  const otLine = mk('line',{ x1:40, y1:735, x2:W-40, y2:735, stroke:C_BLUE, 'stroke-width':'0.8', 'stroke-dasharray':'4,6', opacity:'0.35' });
+  zg.appendChild(otLine);
+  const otLbl = mk('text',{ x:46, y:729, fill:C_DK, 'font-family':'Inter,sans-serif', 'font-size':'9', 'font-weight':'700', 'letter-spacing':'1.5', opacity:'0.6' });
+  otLbl.textContent = 'IT / OT BOUNDARY';
+  zg.appendChild(otLbl);
+
+  svg.appendChild(zg);
+
+  const eg = mk('g');
+  EDGES.forEach(([from,to,label,style]) => {
+    const a = nodeMap[from], b = nodeMap[to];
+    if (!a||!b) return;
+
+    const isAttack = style==='attack';
+    const isData   = style==='data';
+    const isOT     = style==='ot';
+    const isMgmt   = style==='mgmt';
+    const isTrunk  = style==='trunk';
+
+    const col = isAttack?C_RED : isData?C_BLUE : isOT?C_GREEN : isMgmt?C_PURPLE : '#B0B8C4';
+    const w   = isAttack?2 : isTrunk?2 : 1.5;
+    const dash= isAttack?'5,3' : isData?'3,3' : isMgmt?'2,3' : 'none';
+    const op  = isAttack?.85 : isData?.6 : isOT?.5 : isMgmt?.5 : .35;
+    const marker = isAttack?'url(#m-attack)' : isData?'url(#m-data)' : isOT?'url(#m-ot)' : isMgmt?'url(#m-mgmt)' : '';
+
+    const mx = (a.x+b.x)/2;
+    const cp1x = mx, cp1y = a.y, cp2x = mx, cp2y = b.y;
+
+    const path = mk('path',{
+      d:`M${a.x} ${a.y} C${cp1x} ${cp1y} ${cp2x} ${cp2y} ${b.x} ${b.y}`,
+      stroke:col, 'stroke-width':w, fill:'none',
+      'stroke-dasharray':dash, opacity:op,
+      'marker-end':marker,
+    });
+
+    if (isAttack) {
+      const anim = mk('animate',{ attributeName:'stroke-dashoffset', from:'0', to:'-24', dur:'1.2s', repeatCount:'indefinite' });
+      path.appendChild(anim);
+    }
+    eg.appendChild(path);
+
+    if (label && style!=='access') {
+      const t = mk('text',{
+        x:(a.x*.55+b.x*.45), y:(a.y*.55+b.y*.45)-5,
+        fill:col, opacity:'0.8',
+        'font-family':'Inter,sans-serif',
+        'font-size':'9', 'font-weight':'600',
+        'text-anchor':'middle',
+      });
+      t.textContent = label;
+      eg.appendChild(t);
+    }
+  });
+  svg.appendChild(eg);
+
+  const ng = mk('g');
+  NODES.forEach(n => {
+    const isSelected = selectedId===n.id;
+    const g = mk('g',{ transform:`translate(${n.x},${n.y})`, 'data-id':n.id, style:'cursor:pointer' });
+
+    const sc = statusColor(n.status);
+    const R  = n.type==='cloud'?26 : n.type==='switch'?21 : 23;
+    const hasAlerts = n.alerts?.length > 0;
+
+    if (n.status==='critical') {
+      const ring = mk('circle',{ r:R+14, fill:'none', stroke:C_RED, 'stroke-width':'1', opacity:'0' });
+      ring.appendChild(mk('animate',{ attributeName:'r', from:R+6, to:R+20, dur:'2s', repeatCount:'indefinite' }));
+      ring.appendChild(mk('animate',{ attributeName:'opacity', from:'0.25', to:'0', dur:'2s', repeatCount:'indefinite' }));
+      g.appendChild(ring);
+    }
+
+    if (isSelected) {
+      g.appendChild(mk('circle',{ r:R+8, fill:'none', stroke:C_BLUE, 'stroke-width':'1.5', 'stroke-dasharray':'4,3', opacity:'0.7' }));
+    }
+
+    g.appendChild(mk('circle',{
+      r:R+4, fill:'none', stroke:sc,
+      'stroke-width':'1',
+      opacity: n.status==='online'?'0.3':'0.6',
+    }));
+
+    g.appendChild(mk('circle',{
+      r:R,
+      fill:C_NODE_BG,
+      stroke: isSelected ? C_BLUE : (n.group==='ot' ? 'rgba(4,159,217,.4)' : C_NODE_STROKE),
+      'stroke-width': isSelected ? '2' : (n.group==='ot' ? '1.5' : '1'),
+    }));
+
+    g.appendChild(mk('circle',{ r:R-1, fill:`url(#bg-${n.id})` }));
+    const bgGrad = mk('radialGradient',{ id:`bg-${n.id}`, cx:'50%', cy:'30%', r:'70%' });
+    let glowColor = n.status==='critical'?'rgba(226,35,26,.06)' : n.status==='warn'?'rgba(247,129,10,.06)' : n.group==='ot'?'rgba(4,159,217,.06)':'rgba(0,0,0,.02)';
+    bgGrad.appendChild(mk('stop',{ offset:'0%', 'stop-color':glowColor }));
+    bgGrad.appendChild(mk('stop',{ offset:'100%', 'stop-color':'rgba(255,255,255,0)' }));
+    svg.querySelector('defs').appendChild(bgGrad);
+
+    const arcPath = describeArc(0,0,R,-50,50);
+    g.appendChild(mk('path',{ d:arcPath, stroke:sc, 'stroke-width':'2.5', fill:'none', 'stroke-linecap':'round' }));
+
+    const ico = mk('text',{ x:'0', y:'6', 'text-anchor':'middle', 'font-size': n.type==='cloud'?'15':n.type==='plc'?'13':'14', fill:'#333' });
+    ico.textContent = n.icon;
+    g.appendChild(ico);
+
+    const name = mk('text',{
+      x:'0', y:R+16, 'text-anchor':'middle',
+      'font-family':'Inter,sans-serif',
+      'font-size':'10', 'font-weight':'700',
+      fill: n.status==='critical'?C_RED : n.status==='warn'?C_ORANGE : isSelected?C_DK : '#333',
+    });
+    name.textContent = n.label;
+    g.appendChild(name);
+
+    const ip = mk('text',{
+      x:'0', y:R+27, 'text-anchor':'middle',
+      'font-family':'Inter,sans-serif',
+      'font-size':'9', fill:'#9E9EA2',
+    });
+    ip.textContent = n.ip;
+    g.appendChild(ip);
+
+    g.appendChild(mk('circle',{ cx:R-2, cy:-(R-2), r:4, fill:sc, stroke:'#fff', 'stroke-width':'1.5' }));
+
+    if (hasAlerts) {
+      const bx = -(R-2), by = -(R-2);
+      g.appendChild(mk('circle',{ cx:bx, cy:by, r:6.5, fill:C_RED, stroke:'#fff', 'stroke-width':'1.5' }));
+      const bt = mk('text',{ x:bx, y:by+3.5, 'text-anchor':'middle', 'font-family':'Inter,sans-serif', 'font-size':'8', 'font-weight':'700', fill:'#fff' });
+      bt.textContent = n.alerts.length;
+      g.appendChild(bt);
+    }
+
+    if (n.vlan) {
+      const vw = n.vlan.length * 4.3 + 12;
+      const vy = R + 38;
+      g.appendChild(mk('rect',{ x:-vw/2, y:vy-7, width:vw, height:13, rx:3, fill:'rgba(4,159,217,.08)', stroke:'rgba(4,159,217,.25)', 'stroke-width':'0.5' }));
+      const vt = mk('text',{ x:'0', y:vy+3, 'text-anchor':'middle', 'font-family':'Inter,sans-serif', 'font-size':'8', 'font-weight':'600', fill:C_BLUE, opacity:'0.85' });
+      vt.textContent = n.vlan;
+      g.appendChild(vt);
+    }
+
+    if (n.user) {
+      const uw = n.user.length * 4.5 + 16;
+      const uy = R + (n.vlan ? 53 : 38);
+      const uFill = n.status==='critical'?'rgba(226,35,26,.06)' : 'rgba(0,0,0,.03)';
+      const uStroke = n.status==='critical'?'rgba(226,35,26,.25)':'rgba(0,0,0,.1)';
+      g.appendChild(mk('rect',{ x:-uw/2, y:uy-7, width:uw, height:13, rx:3, fill:uFill, stroke:uStroke, 'stroke-width':'0.5' }));
+      const ut = mk('text',{ x:'0', y:uy+3, 'text-anchor':'middle', 'font-family':'Inter,sans-serif', 'font-size':'8', 'font-weight':'500', fill: n.status==='critical'?C_RED:'#58585B' });
+      ut.textContent = '• ' + n.user;
+      g.appendChild(ut);
+    }
+
+    g.addEventListener('click', e => { e.stopPropagation(); selectNode(n.id); });
+    g.addEventListener('mouseenter', e => showTip(n, e));
+    g.addEventListener('mouseleave', hideTip);
+    g.addEventListener('mousemove', moveTip);
+
+    ng.appendChild(g);
+  });
+  svg.appendChild(ng);
+
+  updateTransform();
+  updateCounts();
+}
+
+function mk(tag, attrs={}) {
+  const e = document.createElementNS(NS, tag);
+  Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k, String(v)));
+  return e;
+}
+function polar(cx,cy,r,deg) {
+  const rad = (deg-90)*Math.PI/180;
+  return { x: cx+r*Math.cos(rad), y: cy+r*Math.sin(rad) };
+}
+function describeArc(cx,cy,r,a1,a2) {
+  const s = polar(cx,cy,r,a1), e = polar(cx,cy,r,a2);
+  return `M${s.x} ${s.y} A${r} ${r} 0 0 1 ${e.x} ${e.y}`;
+}
+
+function updateTransform() {
+  svg.style.transform = `translate(${panX}px,${panY}px) scale(${zoom})`;
+  document.getElementById('zoomVal').textContent = Math.round(zoom*100)+'%';
+}
+function adjustZoom(d) {
+  zoom = Math.max(.2, Math.min(2.5, zoom+d));
+  updateTransform();
+}
+function resetView() {
+  const aw=area.offsetWidth, ah=area.offsetHeight;
+  const sw=parseFloat(svg.getAttribute('width'))||1100;
+  const sh=parseFloat(svg.getAttribute('height'))||1200;
+  zoom = Math.min((aw-60)/sw, (ah-60)/sh, 1.0);
+  panX = (aw-sw*zoom)/2;
+  panY = 20;
+  updateTransform();
+}
+
+area.addEventListener('wheel', e => {
+  e.preventDefault();
+  const d = e.deltaY>0?-.1:.1;
+  const rect = area.getBoundingClientRect();
+  const mx = e.clientX-rect.left, my = e.clientY-rect.top;
+  const pz = zoom;
+  zoom = Math.max(.2, Math.min(2.5, zoom+d));
+  panX = mx-(mx-panX)*(zoom/pz);
+  panY = my-(my-panY)*(zoom/pz);
+  updateTransform();
+}, {passive:false});
+
+area.addEventListener('mousedown', e => {
+  if (e.target===area || e.target===svg || e.target.tagName==='rect' || e.target.tagName==='line') {
+    isDragging=true;
+    dragStart={x:e.clientX,y:e.clientY,px:panX,py:panY};
+    area.style.cursor='grabbing';
+  }
+});
+window.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  panX=dragStart.px+(e.clientX-dragStart.x);
+  panY=dragStart.py+(e.clientY-dragStart.y);
+  updateTransform();
+});
+window.addEventListener('mouseup', ()=>{ isDragging=false; area.style.cursor='grab'; });
+area.addEventListener('click', e => {
+  if (e.target===area||e.target===svg) { selectedId=null; closePanel(); buildSVG(); }
+});
+
+const tip = document.getElementById('tooltip');
+function showTip(n, e) {
+  document.getElementById('ttName').textContent = n.label;
+  document.getElementById('ttIp').textContent   = n.ip;
+  document.getElementById('ttInfo').innerHTML =
+    `<b>${n.type.toUpperCase()}</b> · ${n.group==='ot'?'OT Network':'IT Network'}` +
+    (n.vlan ? `<br>${n.vlan}` : '') +
+    (n.alerts?.length ? `<br><span style="color:var(--topo-red)">⚠ ${n.alerts.length} active alert${n.alerts.length>1?'s':''}</span>` : '');
+  tip.classList.add('show');
+  moveTip(e);
+}
+function hideTip() { tip.classList.remove('show'); }
+function moveTip(e) {
+  const x=e.clientX+16, y=e.clientY-40;
+  tip.style.left=Math.min(x,window.innerWidth-225)+'px';
+  tip.style.top=Math.max(y,62)+'px';
+}
+
+function selectNode(id) {
+  selectedId=id; buildSVG(); renderPanel(nodeMap[id]);
+}
+
+function renderPanel(n) {
+  const panel = document.getElementById('panel');
+  panel.classList.remove('hidden');
+
+  const iconBg = n.status==='critical'?'rgba(226,35,26,.08)' : n.status==='warn'?'rgba(247,129,10,.08)' : n.group==='ot'?'rgba(4,159,217,.08)':'rgba(0,0,0,.04)';
+  const iconEl = document.getElementById('phIcon');
+  iconEl.style.background = iconBg;
+  iconEl.style.borderColor = n.status==='critical'?'rgba(226,35,26,.25)':n.group==='ot'?'rgba(4,159,217,.25)':'var(--topo-border)';
+  iconEl.textContent = n.icon;
+  document.getElementById('phName').textContent = n.label;
+  document.getElementById('phType').textContent = n.type.toUpperCase() + ' · ' + (n.group==='ot'?'OT NETWORK':'IT NETWORK');
+
+  const meta = document.getElementById('phMeta');
+  meta.style.display='flex';
+  const riskRaw = parseInt(n.detail?.['Risk Score']) || 0;
+  const riskCol = riskRaw>=80?'var(--topo-red)':riskRaw>=50?'var(--topo-orange)':'var(--topo-green)';
+  const spClass = n.status==='critical'?'sp-crit':n.status==='warn'?'sp-warn':'sp-ok';
+  const spLabel = n.status==='critical'?'Critical Risk':n.status==='warn'?'Warning':'Online';
+  document.getElementById('phStatus').innerHTML =
+    `<span class="status-pill ${spClass}"><span class="sp-dot"></span>${spLabel}</span>`;
+  document.getElementById('phRiskBlock').innerHTML = riskRaw
+    ? `<div class="risk-label">Risk Score</div>
+       <div class="risk-num" style="color:${riskCol}">${riskRaw}</div>
+       <div class="risk-bar"><div class="risk-fill" style="width:${riskRaw}%;background:${riskCol}"></div></div>`
+    : '';
+
+  let html = '';
+
+  html += section('Network Identity', ()=>{
+    let rows = '';
+    rows += kv('IP Address', n.ip, 'c');
+    if (n.vlan) rows += kv('VLAN', n.vlan, 'w');
+    if (n.user) rows += kv('User', n.user, n.status==='critical'?'r':'w');
+    return rows;
+  });
+
+  html += section('Device Details', ()=>{
+    return Object.entries(n.detail||{}).map(([k,v]) => {
+      const isDanger = String(v).includes('⚠')||String(v).includes('MODIFIED')||(k==='Risk Score'&&parseInt(v)>=80)||(k==='Posture'&&v.includes('Non'));
+      const isGood   = (k==='Posture'&&v.includes('Compliant ✓'))||(k==='Firmware'&&!v.includes('⚠'));
+      return kv(k, v, isDanger?'r':isGood?'g':'');
+    }).join('');
+  });
+
+  if (n.alerts?.length) {
+    html += `<div class="psec"><div class="psec-title">Active Alerts (${n.alerts.length})</div>`;
+    n.alerts.forEach(a => {
+      html += `<div class="alert-row ${a.sev}">
+        <div class="al-bar" style="background:${a.sev==='crit'?'var(--topo-red)':'var(--topo-orange)'}"></div>
+        <div>
+          <div class="al-text">${a.text}</div>
+          <div class="al-meta">
+            <span class="al-time">${a.time}</span>
+            <span class="tag tag-${a.sev==='crit'?'red':'orange'}">${a.mitre}</span>
+          </div>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  const conns = EDGES
+    .filter(([f,t])=>f===n.id||t===n.id)
+    .map(([f,t,lbl,sty]) => ({
+      peer: nodeMap[f===n.id?t:f],
+      lbl, sty, dir: f===n.id?'→':'←',
+    })).filter(c=>c.peer);
+
+  if (conns.length) {
+    html += `<div class="psec"><div class="psec-title">Connections (${conns.length})</div>`;
+    conns.forEach(c => {
+      const cc = c.sty==='attack'?'var(--topo-red)' : c.sty==='data'?'var(--topo-blue)' : c.sty==='ot'?'var(--topo-green)' : c.sty==='mgmt'?'var(--topo-purple)':'var(--topo-dim)';
+      html += `<div class="conn-row">
+        <span class="conn-arrow" style="color:${cc}">${c.dir}</span>
+        <span style="font-weight:700;color:var(--topo-text)">${c.peer.label}</span>
+        <span style="font-size:10px;color:var(--topo-dim)">${c.peer.ip}</span>
+        <span class="conn-label" style="color:${cc}">${c.lbl||c.sty}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  document.getElementById('panelBody').innerHTML = html;
+}
+
+function section(title, contentFn) {
+  return `<div class="psec"><div class="psec-title">${title}</div>${contentFn()}</div>`;
+}
+function kv(k, v, cls='') {
+  return `<div class="kv"><div class="kk">${k}</div><div class="kv-v ${cls}">${v}</div></div>`;
+}
+
+function closePanel() {
+  document.getElementById('panel').classList.add('hidden');
+  document.getElementById('phMeta').style.display='none';
+  document.getElementById('panelBody').innerHTML = `<div class="empty-panel"><div class="empty-icon">◎</div><div class="empty-title">No device selected</div><div class="empty-sub">Click any node on the topology map to view device details, alerts, and connections</div></div>`;
+}
+
+function setFilter(btn, f) {
+  document.querySelectorAll('.fp').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  activeFilter = f;
+  document.querySelectorAll('#topoSvg g[data-id]').forEach(g=>{
+    const n = nodeMap[g.dataset.id];
+    if (!n) return;
+    let show = true;
+    if (f==='switch')   show=['switch','router','firewall'].includes(n.type);
+    if (f==='server')   show=n.type==='server';
+    if (f==='endpoint') show=n.type==='endpoint';
+    if (f==='ot')       show=n.group==='ot';
+    if (f==='flagged')  show=n.alerts?.length>0||n.status==='critical'||n.status==='warn';
+    g.style.opacity=show?'1':'0.08';
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', function(){
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('#topoSvg g[data-id]').forEach(g=>{
+    const n=nodeMap[g.dataset.id];
+    if(!n) return;
+    const m=!q||n.label.toLowerCase().includes(q)||n.ip.includes(q)||(n.user||'').toLowerCase().includes(q)||(n.vlan||'').toLowerCase().includes(q)||JSON.stringify(n.detail||{}).toLowerCase().includes(q);
+    g.style.opacity=m?'1':'0.07';
+  });
+});
+
+function updateCounts() {
+  let ok=0,wn=0,cr=0;
+  NODES.forEach(n=>{ if(n.status==='online')ok++; else if(n.status==='warn')wn++; else if(n.status==='critical')cr++; });
+  document.getElementById('ncOk').textContent=ok;
+  document.getElementById('ncWn').textContent=wn;
+  document.getElementById('ncCr').textContent=cr;
+  document.getElementById('ncTt').textContent=NODES.length;
+}
+
+setInterval(()=>{ document.getElementById('sbTime').textContent=' '+new Date().toLocaleTimeString('en-GB'); },1000);
+document.getElementById('sbTime').textContent=' '+new Date().toLocaleTimeString('en-GB');
+
+buildSVG();
+setTimeout(resetView, 60);
+</script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — Security Overview</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/shared.css">
+</head>
+<body>
+
+<div id="navMount"></div>
+
+<div class="subhdr">
+  <div class="breadcrumb">
+    <span>NetDNA</span><span>›</span>
+    <span class="cur">Security Overview</span>
+  </div>
+  <div class="time-sel">
+    <button class="tbtn active" onclick="setTime(this,60)">1H</button>
+    <button class="tbtn" onclick="setTime(this,360)">6H</button>
+    <button class="tbtn" onclick="setTime(this,1440)">24H</button>
+    <button class="tbtn" onclick="setTime(this,10080)">7D</button>
+  </div>
+  <button class="btn btn-sec" onclick="exportReport()">⬇ Export</button>
+  <div style="display:flex;gap:6px;border-left:1px solid var(--border);padding-left:10px;">
+    <a class="btn btn-sec" href="/dashboard" style="font-size:11px;background:var(--cisco-blue);color:#fff;border-color:var(--cisco-blue)">Overview</a>
+    <a class="btn btn-sec" href="/topology" style="font-size:11px">Topology</a>
+    <a class="btn btn-sec" href="/remote" style="font-size:11px">Remote &amp; Wireless</a>
+    <a class="btn btn-sec" href="/ot" style="font-size:11px">OT Networks</a>
+    <a class="btn btn-sec" href="/heatmap" style="font-size:11px">Heatmap</a>
+    <a class="btn btn-sec" href="/prediction" style="font-size:11px">Prediction</a>
+    <a class="btn btn-sec" href="/quarantine" style="font-size:11px">ISE Response</a>
+  </div>
+</div>
+
+<div class="alert-banner" id="alertBanner" style="display:none">
+  <div style="font-size:18px;flex-shrink:0">⚠</div>
+  <div class="alert-body">
+    <div class="alert-title" id="alertTitle">Critical Anomaly Detected</div>
+    <div class="alert-desc" id="alertDesc"></div>
+  </div>
+  <button class="xbtn" onclick="document.getElementById('alertBanner').style.display='none'">✕</button>
+</div>
+
+<div class="page">
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">NetFlow Rate</div>
+        <div class="kpi-ico" style="background:var(--cisco-bg)">📡</div></div>
+      <div class="kpi-val kv-blue" id="kFlows">—</div>
+      <div class="kpi-delta" style="color:var(--g50)">flows / second</div>
+      <div class="kpi-track"><div class="kpi-fill" id="kFlowsBar" style="background:var(--cisco-blue)"></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Active Anomalies</div>
+        <div class="kpi-ico" style="background:var(--red-lt)">🚨</div></div>
+      <div class="kpi-val kv-red" id="kAnomalies">—</div>
+      <div class="kpi-delta" id="kAnomaliesBreakdown" style="color:var(--g50)"></div>
+      <div class="kpi-track"><div class="kpi-fill" id="kAnomBar" style="background:var(--red)"></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Entities Monitored</div>
+        <div class="kpi-ico" style="background:var(--cisco-bg)">👥</div></div>
+      <div class="kpi-val kv-blue" id="kEntities">—</div>
+      <div class="kpi-delta" style="color:var(--g50)">users + devices · ISE mapped</div>
+      <div class="kpi-track"><div class="kpi-fill" style="width:100%;background:var(--cisco-blue)"></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Mean Time to Detect</div>
+        <div class="kpi-ico" style="background:var(--green-lt)">⚡</div></div>
+      <div class="kpi-val kv-green">4.2<span style="font-size:16px;font-weight:500;color:var(--g50)">min</span></div>
+      <div class="kpi-delta" style="color:var(--green)">▼ vs 200-day industry avg</div>
+      <div class="kpi-track"><div class="kpi-fill" style="width:4%;background:var(--green)"></div></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="left-col">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--cisco-blue)"></div>NetFlow Analysis</div>
+          <div style="display:flex;gap:6px">
+            <span class="cbadge blue">IPFIX v10</span>
+            <span class="cbadge">NetFlow v9</span>
+          </div>
+        </div>
+        <div class="inner-tabs">
+          <button class="itab active" onclick="switchInner(this,'tab-baseline')">Baseline</button>
+          <button class="itab" onclick="switchInner(this,'tab-proto')">Protocols</button>
+          <button class="itab" onclick="switchInner(this,'tab-vlan')">VLANs</button>
+        </div>
+        <div id="tab-baseline" class="tab-pane active">
+          <div style="padding:12px 18px 0;display:flex;gap:18px;">
+            <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--g70)">
+              <span style="width:18px;height:2px;border-top:2px dashed var(--cisco-blue);display:inline-block"></span>Baseline</span>
+            <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--g70)">
+              <span style="width:18px;height:2px;background:var(--cisco-blue);display:inline-block"></span>Actual</span>
+            <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--g70)">
+              <span style="width:18px;height:2px;background:var(--red);display:inline-block"></span>Anomaly</span>
+          </div>
+          <div style="padding:8px 18px 14px"><canvas id="flowCanvas" height="170"></canvas></div>
+        </div>
+        <div id="tab-proto" class="tab-pane">
+          <div style="padding:14px 18px"><canvas id="protoCanvas" height="170"></canvas></div>
+        </div>
+        <div id="tab-vlan" class="tab-pane">
+          <div style="padding:14px 18px"><canvas id="vlanCanvas" height="170"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--red)"></div>Behavioural Anomaly Alerts</div>
+          <span class="cbadge red" id="alertCount">Loading...</span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Severity</th><th>Description</th><th>MITRE ATT&CK</th>
+            <th>Entity</th><th>Time</th><th>Confidence</th><th></th>
+          </tr></thead>
+          <tbody id="alertsTable">
+            <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--g50)">Loading alerts...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--orange)"></div>Entity Risk Scores</div>
+          <span class="cbadge">Top 10 · ISE Mapped</span>
+        </div>
+        <div id="entityList">
+          <div style="padding:30px;text-align:center;color:var(--g50)">Loading...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ise-hdr"><span class="ise-badge">ISE</span>
+          <span class="ise-title" id="iseTitle">Identity Context</span></div>
+        <div id="iseContext">
+          <div class="ise-row"><span class="ise-k">Status</span>
+            <span class="ise-v" style="color:var(--g50)">Select an entity ↑</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--red)"></div>Lateral Movement Map</div>
+          <span class="cbadge red">LIVE</span>
+        </div>
+        <div style="padding:14px 18px 16px"><canvas id="lmCanvas" height="140"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+<div class="modal">
+  <div class="modal-hdr">
+    <div>
+      <div class="modal-title" id="modalTitle">Alert Investigation</div>
+      <div class="modal-sub" id="modalSub"></div>
+    </div>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+  </div>
+  <div class="modal-body" id="modalBody">
+    <div style="padding:30px;text-align:center;color:var(--g50)">Loading...</div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-sec" onclick="closeModal()">Close</button>
+    <button class="btn btn-sec" id="modalAssign" onclick="assignAnomaly()">Assign to Me</button>
+    <button class="btn btn-sec" onclick="window.location.href='/quarantine'">⛔ ISE Response →</button>
+  </div>
+</div>
+</div>
+
+<div class="statusbar">
+  <div class="si"><div class="sd sd-g"></div>NetFlow Active</div>
+  <div class="si"><div class="sd sd-b"></div>ISE pxGrid · <span id="sbEntities">—</span> entities</div>
+  <div class="si"><div class="sd sd-b"></div>Catalyst Center API</div>
+  <div class="si"><div class="sd sd-g"></div>Umbrella DNS Feed</div>
+  <div class="si"><div class="sd sd-o"></div>MDT Stream</div>
+  <div class="sr">NetDNA v0.1 · Simulator Mode · <strong>Cisco-Native</strong></div>
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script src="/assets/js/dashboard.js"></script>
+</body>
+</html>

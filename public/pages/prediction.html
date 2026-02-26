@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — Threat Prediction</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/shared.css">
+<style>
+.tl-item{display:flex;gap:14px;padding:10px 0;position:relative;}
+.tl-item:not(:last-child)::after{content:'';position:absolute;
+  left:13px;top:32px;bottom:0;width:1px;background:var(--g10);}
+.tl-dot{width:26px;height:26px;border-radius:50%;display:flex;
+  align-items:center;justify-content:center;font-size:11px;
+  flex-shrink:0;border:2px solid;}
+.tl-phase{font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.4px;margin-bottom:2px;}
+.tl-desc{font-size:12px;color:var(--g70);margin-bottom:4px;}
+.tl-tags{display:flex;flex-wrap:wrap;gap:4px;}
+.tl-tag{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600;}
+.tl-time{font-size:10px;color:var(--g50);white-space:nowrap;padding-top:2px;min-width:100px;text-align:right;}
+</style>
+</head>
+<body>
+
+<div id="navMount"></div>
+
+<div class="subhdr">
+  <div class="breadcrumb">
+    <span>NetDNA</span><span>›</span>
+    <span class="cur">Threat Prediction</span>
+  </div>
+  <div style="display:flex;gap:6px;border-left:1px solid var(--border);padding-left:10px;">
+    <a class="btn btn-sec" href="/dashboard" style="font-size:11px">Overview</a>
+    <a class="btn btn-sec" href="/topology" style="font-size:11px">Topology</a>
+    <a class="btn btn-sec" href="/remote" style="font-size:11px">Remote &amp; Wireless</a>
+    <a class="btn btn-sec" href="/ot" style="font-size:11px">OT Networks</a>
+    <a class="btn btn-sec" href="/heatmap" style="font-size:11px">Heatmap</a>
+    <a class="btn btn-sec" href="/prediction" style="font-size:11px;background:var(--cisco-blue);color:#fff;border-color:var(--cisco-blue)">Prediction</a>
+    <a class="btn btn-sec" href="/quarantine" style="font-size:11px">ISE Response</a>
+  </div>
+</div>
+
+<div class="page">
+  <div class="two-col">
+    <div class="card" style="animation-delay:0s">
+      <div class="card-hdr">
+        <div class="card-title"><div class="cdot" style="background:var(--red)"></div>Predictive Threat Timeline</div>
+        <span class="cbadge red">MITRE ATT&CK Chain</span>
+      </div>
+      <div style="padding:16px 18px" id="timeline"></div>
+    </div>
+    <div class="left-col">
+      <div class="card" style="animation-delay:0s">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--cisco-blue)"></div>Predicted Next Actions</div>
+        </div>
+        <div style="padding:14px 18px" id="predictions"></div>
+      </div>
+      <div class="card" style="animation-delay:0s">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--green)"></div>NetDNA Recommendation</div>
+        </div>
+        <div style="padding:14px 18px">
+          <div style="background:var(--cisco-bg);border:1px solid var(--cisco-lt);border-radius:5px;padding:12px;margin-bottom:10px;font-size:12px;line-height:1.8">
+            <div style="font-size:11px;font-weight:700;color:var(--cisco-dk);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Immediate Actions</div>
+            ✓ <strong>ISE quarantine</strong> applied to j.harris<br>
+            ✓ <strong>Block SGT</strong> pushed to downstream switches<br>
+            → <strong>Force re-auth</strong> before restoring access<br>
+            → <strong>Review m.patel</strong> — similar traffic pattern
+          </div>
+          <div style="font-size:11px;color:var(--g50)">Blast radius if unmitigated: <strong style="color:var(--red)">Finance, HR, Dev VLANs at risk</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="statusbar">
+  <div class="si"><div class="sd sd-g"></div>NetFlow Active</div>
+  <div class="si"><div class="sd sd-b"></div>ISE pxGrid</div>
+  <div class="si"><div class="sd sd-b"></div>Catalyst Center API</div>
+  <div class="si"><div class="sd sd-g"></div>Umbrella DNS Feed</div>
+  <div class="si"><div class="sd sd-o"></div>MDT Stream</div>
+  <div class="sr">NetDNA v0.1 · Simulator Mode · <strong>Cisco-Native</strong></div>
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script>
+if (!Auth.guard()) throw 0;
+document.getElementById('navMount').innerHTML = renderNav('Overview');
+document.head.insertAdjacentHTML('beforeend', `<style>${NAV_CSS}</style>`);
+
+function buildTimeline() {
+  const el=document.getElementById('timeline');
+  if (el.dataset.built) return;
+  el.dataset.built='1';
+
+  const phases=[
+    {col:'#00853E',bg:'#E6F4EE',icon:'✓',phase:'Initial Access — Confirmed',time:'08:43',done:true,
+     desc:'j.harris authenticates via 802.1X EAP-TLS. Posture non-compliant (AV outdated). Admitted to VLAN-20.',
+     tags:['T1078 Valid Accounts','ISE: Non-Compliant','VLAN-20']},
+    {col:'#00853E',bg:'#E6F4EE',icon:'✓',phase:'Discovery — Confirmed',time:'14:18',done:true,
+     desc:'Network scan of 10.20.0.0/24. 4,096 ports probed across 12 hosts. Baseline deviation +240%.',
+     tags:['T1046 Net Scanning','4,096 ports','Baseline +240%']},
+    {col:'#E2231A',bg:'#FDECEA',icon:'⚠',phase:'Lateral Movement — Active NOW',time:'14:23',done:true,
+     desc:'SSH + SMB connections VLAN-20 → VLAN-40 Dev. 5 dev servers accessed. ISE quarantine applied.',
+     tags:['T1021 Remote Services','SSH+SMB to Dev','Quarantine Active']},
+    {col:'#F7810A',bg:'#FEF3E6',icon:'→',phase:'Collection — Predicted 30min',time:'~14:53',done:false,
+     desc:'Based on SMB access pattern — bulk file collection from Dev repos likely. Source code at risk.',
+     tags:['T1039 Network Share','Dev repos at risk','Confidence 78%']},
+    {col:'#F7810A',bg:'#FEF3E6',icon:'→',phase:'Exfiltration — Predicted 60-90min',time:'~15:30',done:false,
+     desc:'Umbrella DNS anomaly detected. Encrypted outbound to 185.220.101.4 likely via HTTPS/443.',
+     tags:['T1041 C2 Exfil','Umbrella anomaly','185.220.101.4']},
+    {col:'#9E9EA2',bg:'#F5F6F8',icon:'?',phase:'Persistence — Possible 2hr+',time:'If unmitigated',done:false,
+     desc:'Historical pattern: new admin account on compromised dev servers to maintain access.',
+     tags:['T1098 Account Manip','New local admin','Confidence 41%']},
+  ];
+
+  el.innerHTML = phases.map(p=>`
+    <div class="tl-item">
+      <div class="tl-dot" style="background:${p.bg};border-color:${p.col};color:${p.col}">${p.icon}</div>
+      <div style="flex:1">
+        <div class="tl-phase" style="color:${p.col}">${p.phase}</div>
+        <div class="tl-desc">${p.desc}</div>
+        <div class="tl-tags">${p.tags.map(t=>`<span class="tl-tag" style="background:${p.bg};color:${p.col}">${t}</span>`).join('')}</div>
+      </div>
+      <div class="tl-time">${p.time}</div>
+    </div>`).join('');
+
+  document.getElementById('predictions').innerHTML = [
+    {pct:78,text:'Bulk file collection from Dev repos',col:'var(--orange)'},
+    {pct:71,text:'Exfiltration via HTTPS to 185.220.101.4',col:'var(--orange)'},
+    {pct:54,text:'New admin account on dev-srv-03',col:'var(--cisco-dk)'},
+    {pct:41,text:'Scheduled task / startup persistence',col:'var(--g50)'},
+  ].map(p=>`
+    <div style="background:var(--g05);border:1px solid var(--border);border-radius:5px;padding:10px 12px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:500">${p.text}</span>
+        <span style="font-size:12px;font-weight:700;color:${p.col};white-space:nowrap;margin-left:8px">${p.pct}%</span>
+      </div>
+      <div style="height:4px;background:var(--g10);border-radius:2px">
+        <div style="height:100%;width:${p.pct}%;background:${p.col};border-radius:2px"></div>
+      </div>
+    </div>`).join('');
+}
+
+buildTimeline();
+</script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — ISE Response / Quarantine</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/shared.css">
+<style>
+.qs-item{display:flex;align-items:center;gap:12px;padding:10px 14px;
+  border:1px solid var(--border);border-radius:var(--r);transition:all .4s;margin-bottom:8px;}
+.qs-item.done{border-color:rgba(0,133,62,.3);background:var(--green-lt);}
+.qs-item.active{border-color:var(--cisco-blue);background:var(--cisco-bg);}
+.qs-item.pending{opacity:.4;}
+.qs-num{width:24px;height:24px;border-radius:50%;display:flex;
+  align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.qs-text{flex:1;}
+.qs-title{font-size:12px;font-weight:600;}
+.qs-sub{font-size:11px;color:var(--g50);margin-top:1px;}
+.qs-status{font-size:10px;font-weight:600;padding:2px 8px;
+  border-radius:20px;white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<div id="navMount"></div>
+
+<div class="subhdr">
+  <div class="breadcrumb">
+    <span>NetDNA</span><span>›</span>
+    <span class="cur">ISE Response</span>
+  </div>
+  <div style="display:flex;gap:6px;border-left:1px solid var(--border);padding-left:10px;">
+    <a class="btn btn-sec" href="/dashboard" style="font-size:11px">Overview</a>
+    <a class="btn btn-sec" href="/topology" style="font-size:11px">Topology</a>
+    <a class="btn btn-sec" href="/remote" style="font-size:11px">Remote &amp; Wireless</a>
+    <a class="btn btn-sec" href="/ot" style="font-size:11px">OT Networks</a>
+    <a class="btn btn-sec" href="/heatmap" style="font-size:11px">Heatmap</a>
+    <a class="btn btn-sec" href="/prediction" style="font-size:11px">Prediction</a>
+    <a class="btn btn-sec" href="/quarantine" style="font-size:11px;background:var(--cisco-blue);color:#fff;border-color:var(--cisco-blue)">ISE Response</a>
+  </div>
+</div>
+
+<div class="page">
+  <div class="two-col">
+    <div class="card" style="animation-delay:0s">
+      <div class="card-hdr">
+        <div class="card-title"><div class="cdot" style="background:var(--cisco-blue)"></div>Automated ISE Quarantine — j.harris</div>
+        <span class="cbadge blue" id="qBadge">Ready</span>
+      </div>
+      <div style="padding:14px 18px" id="qSteps"></div>
+      <div style="padding:0 18px 16px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-sec" onclick="resetQ()">↺ Reset</button>
+        <button class="btn btn-red" id="qRunBtn" onclick="runQ()">▶ Run Automated Response</button>
+      </div>
+    </div>
+    <div class="left-col">
+      <div class="card" style="animation-delay:0s">
+        <div class="card-hdr"><div class="card-title"><div class="cdot" style="background:var(--cisco-blue)"></div>ISE API Log</div></div>
+        <div style="padding:14px 18px;font-family:'JetBrains Mono','Courier New',monospace;font-size:11px;color:var(--g70);display:flex;flex-direction:column;gap:3px;max-height:220px;overflow-y:auto" id="apiLog">
+          <span style="color:var(--g30)">// Awaiting quarantine trigger...</span>
+        </div>
+      </div>
+      <div class="card" style="animation-delay:0s">
+        <div class="card-hdr"><div class="card-title"><div class="cdot" style="background:var(--green)"></div>Entity State</div></div>
+        <div class="ise-row"><span class="ise-k">VLAN</span><span class="ise-v" id="qVlan">VLAN-20 Finance</span></div>
+        <div class="ise-row"><span class="ise-k">SGT Tag</span><span class="ise-v warn" id="qSgt">SGT-Finance</span></div>
+        <div class="ise-row"><span class="ise-k">Internet</span><span class="ise-v ok" id="qInternet">Permitted</span></div>
+        <div class="ise-row"><span class="ise-k">Lateral Movement</span><span class="ise-v warn" id="qLateral">Possible</span></div>
+        <div class="ise-row"><span class="ise-k">Status</span><span class="ise-v warn" id="qStatus">Under Investigation</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="statusbar">
+  <div class="si"><div class="sd sd-g"></div>NetFlow Active</div>
+  <div class="si"><div class="sd sd-b"></div>ISE pxGrid</div>
+  <div class="si"><div class="sd sd-b"></div>Catalyst Center API</div>
+  <div class="si"><div class="sd sd-g"></div>Umbrella DNS Feed</div>
+  <div class="si"><div class="sd sd-o"></div>MDT Stream</div>
+  <div class="sr">NetDNA v0.1 · Simulator Mode · <strong>Cisco-Native</strong></div>
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script>
+if (!Auth.guard()) throw 0;
+document.getElementById('navMount').innerHTML = renderNav('Overview');
+document.head.insertAdjacentHTML('beforeend', `<style>${NAV_CSS}</style>`);
+
+const Q_STEPS=[
+  {title:'Anomaly Confirmed by NetDNA Engine',sub:'Risk 87/100 · Confidence 91% · T1021 mapped',
+   api:'POST /api/v1/threat/confirm {entity:"j.harris",score:87}'},
+  {title:'ISE pxGrid: Quarantine Policy Push',sub:'SGT-Quarantine applied · All switches notified',
+   api:'POST /ise/api/v1/policy/sgacl {user:"j.harris",policy:"QUARANTINE"}'},
+  {title:'VLAN Re-assignment to VLAN-99',sub:'Device moved from VLAN-20 Finance to VLAN-99 Quarantine',
+   api:'PUT /ise/api/v1/endpoint/vlan {mac:"...",vlan:99}'},
+  {title:'Internet Access Revoked',sub:'Umbrella DNS policy updated · All outbound blocked',
+   api:'POST /umbrella/v1/policies {user:"j.harris",block:"all"}'},
+  {title:'Catalyst Center ACL Enforcement',sub:'Extended ACL pushed to SW-CORE-01 · Lateral paths blocked',
+   api:'POST /dna/intent/api/v1/template-programmer/template/deploy'},
+  {title:'SOC Alert & Ticket Created',sub:'INC-20841 opened · Severity 1 · Assigned to SOC-L2',
+   api:'POST /servicenow/api/now/table/incident {severity:1}'},
+  {title:'Entity Contained — Awaiting Remediation',sub:'Fully isolated · AV update required before re-admission',
+   api:'// Quarantine complete — monitoring continues'},
+];
+
+let qStep=0,qRunning=false;
+
+function initQ(){
+  const el=document.getElementById('qSteps');
+  if(el.dataset.built) return;
+  el.dataset.built='1';
+  renderQ();
+}
+function renderQ(){
+  document.getElementById('qSteps').innerHTML=Q_STEPS.map((s,i)=>{
+    let cls='pending',nb='#C6C7CA',nc='#fff',st='Pending',sb='background:#E8EBF1;color:#9E9EA2';
+    if(i<qStep){cls='done';nb='var(--green)';st='Complete';sb='background:var(--green-lt);color:var(--green)';}
+    else if(i===qStep&&qRunning){cls='active';nb='var(--cisco-blue)';st='Running…';sb='background:var(--cisco-bg);color:var(--cisco-dk)';}
+    return `<div class="qs-item ${cls}">
+      <div class="qs-num" style="background:${nb};color:${nc}">${i<qStep?'✓':i+1}</div>
+      <div class="qs-text"><div class="qs-title">${s.title}</div><div class="qs-sub">${s.sub}</div></div>
+      <span class="qs-status" style="${sb}">${st}</span></div>`;
+  }).join('');
+}
+function appendLog(msg,col='#58585B'){
+  const el=document.getElementById('apiLog');
+  const div=document.createElement('div');
+  div.style.color=col; div.textContent=msg;
+  el.appendChild(div); el.scrollTop=el.scrollHeight;
+}
+async function runQ(){
+  if(qRunning||!Auth.can('quarantine')) return;
+  qRunning=true;
+  document.getElementById('qRunBtn').disabled=true;
+  const cols=['#049FD9','#F7810A','#E2231A','#E2231A','#E2231A','#E2231A','#00853E'];
+  const states=[
+    {vlan:'VLAN-20 Finance',sgt:'SGT-Finance',int:'Permitted',lat:'Possible',st:'Under Investigation'},
+    {vlan:'VLAN-20 Finance',sgt:'SGT-Quarantine ⚠',int:'Permitted',lat:'Blocked',st:'Policy Applied'},
+    {vlan:'VLAN-99 Quarantine',sgt:'SGT-Quarantine ⚠',int:'Permitted',lat:'Blocked',st:'VLAN Isolated'},
+    {vlan:'VLAN-99 Quarantine',sgt:'SGT-Quarantine ⚠',int:'Revoked',lat:'Blocked',st:'Internet Blocked'},
+    {vlan:'VLAN-99 Quarantine',sgt:'SGT-Quarantine ⚠',int:'Revoked',lat:'Blocked',st:'ACL Enforced'},
+    {vlan:'VLAN-99 Quarantine',sgt:'SGT-Quarantine ⚠',int:'Revoked',lat:'Blocked',st:'SOC Notified'},
+    {vlan:'VLAN-99 Quarantine',sgt:'SGT-Quarantine ⚠',int:'Revoked',lat:'Blocked',st:'✓ CONTAINED'},
+  ];
+  for(let i=0;i<Q_STEPS.length;i++){
+    qStep=i; renderQ();
+    appendLog(`[${new Date().toLocaleTimeString()}] ${Q_STEPS[i].api}`,cols[i]);
+    await new Promise(r=>setTimeout(r,900));
+    const s=states[i];
+    document.getElementById('qVlan').textContent=s.vlan;
+    document.getElementById('qVlan').style.color=s.vlan.includes('99')?'var(--red)':'inherit';
+    document.getElementById('qSgt').textContent=s.sgt;
+    document.getElementById('qSgt').className='ise-v '+(s.sgt.includes('Quarantine')?'bad':'warn');
+    document.getElementById('qInternet').textContent=s.int;
+    document.getElementById('qInternet').className='ise-v '+(s.int==='Permitted'?'ok':'bad');
+    document.getElementById('qLateral').textContent=s.lat;
+    document.getElementById('qLateral').className='ise-v '+(s.lat==='Blocked'?'ok':'warn');
+    document.getElementById('qStatus').textContent=s.st;
+    document.getElementById('qStatus').style.color=s.st.includes('CONTAINED')?'var(--green)':'inherit';
+    appendLog(`  → 200 OK · ${Q_STEPS[i].title}`,'#00853E');
+  }
+  qStep=Q_STEPS.length; renderQ();
+  document.getElementById('qBadge').textContent='Contained';
+  document.getElementById('qBadge').style.background='var(--green-lt)';
+  document.getElementById('qBadge').style.color='var(--green)';
+  appendLog(`\n[${new Date().toLocaleTimeString()}] ✓ Contained. INC-20841 open.`,'#00853E');
+  qRunning=false;
+  toast('Entity quarantined successfully', 'success');
+}
+function resetQ(){
+  qStep=0;qRunning=false;
+  delete document.getElementById('qSteps').dataset.built;
+  document.getElementById('apiLog').innerHTML='<span style="color:var(--g30)">// Awaiting quarantine trigger...</span>';
+  document.getElementById('qBadge').textContent='Ready';
+  document.getElementById('qBadge').style.background='';
+  document.getElementById('qBadge').style.color='';
+  document.getElementById('qRunBtn').disabled=false;
+  ['qVlan','qSgt','qInternet','qLateral','qStatus'].forEach(id=>{
+    const el=document.getElementById(id); el.style.color='';el.className='ise-v';
+  });
+  document.getElementById('qVlan').textContent='VLAN-20 Finance';
+  document.getElementById('qSgt').textContent='SGT-Finance';
+  document.getElementById('qSgt').className='ise-v warn';
+  document.getElementById('qInternet').textContent='Permitted';
+  document.getElementById('qInternet').className='ise-v ok';
+  document.getElementById('qLateral').textContent='Possible';
+  document.getElementById('qLateral').className='ise-v warn';
+  document.getElementById('qStatus').textContent='Under Investigation';
+  initQ();
+}
+
+initQ();
+</script>
+</body>
+</html>

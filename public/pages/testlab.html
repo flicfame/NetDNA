@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — Test Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/shared.css">
+<style>
+:root {
+  --bg:       #F5F7FA;
+  --bg2:      #FFFFFF;
+  --bg3:      #EEF1F5;
+  --bg4:      #E0E4EA;
+  --border:   #E0E4EA;
+  --border2:  #D0D5DD;
+  --text:     #1D1D1D;
+  --text-dim: #9E9EA2;
+  --text-mid: #58585B;
+  --blue:     #049FD9;
+  --dk:       #004BAF;
+  --lt:       rgba(4,159,217,.08);
+  --green:    #00853E;
+  --green-dim:rgba(0,133,62,.08);
+  --red:      #E2231A;
+  --red-dim:  rgba(226,35,26,.06);
+  --orange:   #F7810A;
+  --orange-dim:rgba(247,129,10,.06);
+  --yellow:   #D4A017;
+  --purple:   #6B5FCF;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body {
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  font-size:13px;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+
+.header {
+  border-bottom:1px solid var(--border);
+  padding:0 24px;
+  height:39px;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  background:var(--bg2);
+  position:sticky;
+  top:53px;
+  z-index:100;
+}
+
+.logo {
+  font-size:15px;
+  font-weight:700;
+  color:var(--text);
+}
+.logo span { color:var(--blue); }
+.logo-badge {
+  font-size:9px;
+  font-weight:600;
+  background:var(--lt);
+  border:1px solid rgba(4,159,217,.2);
+  color:var(--blue);
+  padding:2px 8px;
+  border-radius:3px;
+  letter-spacing:.8px;
+  text-transform:uppercase;
+}
+
+.header-right {
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.api-url-wrap {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:5px;
+  padding:4px 10px;
+}
+.api-url-label {
+  font-size:9px;
+  font-weight:600;
+  color:var(--text-dim);
+  text-transform:uppercase;
+  letter-spacing:.6px;
+}
+.api-url-input {
+  font-size:11px;
+  font-weight:500;
+  color:var(--blue);
+  background:none;
+  border:none;
+  outline:none;
+  width:180px;
+}
+.api-url-input::placeholder { color:var(--text-dim); }
+
+.conn-status {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:10px;
+  font-weight:600;
+}
+.conn-dot {
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--text-dim);
+}
+.conn-dot.ok  { background:var(--green); box-shadow:0 0 6px rgba(0,133,62,.4); animation:pulseGreen 2s infinite; }
+.conn-dot.err { background:var(--red);   box-shadow:0 0 6px rgba(226,35,26,.4); }
+.conn-dot.checking { background:var(--yellow); animation:pulsing .8s ease-in-out infinite; }
+@keyframes pulseGreen { 0%,100%{opacity:1} 50%{opacity:.4} }
+@keyframes pulsing { 0%,100%{opacity:.3} 50%{opacity:1} }
+
+.layout {
+  display:grid;
+  grid-template-columns:280px 1fr 340px;
+  height:calc(100vh - 92px);
+  overflow:hidden;
+}
+
+.left-panel {
+  border-right:1px solid var(--border);
+  overflow-y:auto;
+  background:var(--bg2);
+}
+
+.panel-title {
+  font-size:10px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:1.5px;
+  color:var(--text-dim);
+  padding:14px 18px 10px;
+  border-bottom:1px solid var(--border);
+}
+
+.scenario-group {
+  border-bottom:1px solid var(--border);
+}
+.sg-title {
+  font-size:9px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:1.2px;
+  color:var(--text-dim);
+  padding:12px 18px 8px;
+}
+.scenario-btn {
+  width:100%;
+  text-align:left;
+  background:none;
+  border:none;
+  border-bottom:1px solid var(--border);
+  padding:12px 18px;
+  cursor:pointer;
+  transition:all .15s;
+  position:relative;
+  overflow:hidden;
+}
+.scenario-btn::before {
+  content:'';
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:3px;
+  background:var(--col);
+  opacity:0;
+  transition:opacity .15s;
+}
+.scenario-btn:hover { background:var(--bg); }
+.scenario-btn:hover::before { opacity:1; }
+.scenario-btn.firing {
+  background:rgba(4,159,217,.04);
+  animation:firePulse .4s ease;
+}
+@keyframes firePulse {
+  0%{background:rgba(4,159,217,.1)}
+  100%{background:rgba(4,159,217,.04)}
+}
+
+.sb-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:4px;
+}
+.sb-name {
+  font-size:12px;
+  font-weight:600;
+  color:var(--text);
+}
+.sb-sev {
+  font-size:9px;
+  font-weight:600;
+  padding:2px 6px;
+  border-radius:3px;
+  text-transform:uppercase;
+  letter-spacing:.4px;
+}
+.sev-critical { background:var(--red-dim); color:var(--red); border:1px solid rgba(226,35,26,.2); }
+.sev-high     { background:var(--orange-dim); color:var(--orange); border:1px solid rgba(247,129,10,.2); }
+.sev-medium   { background:var(--lt); color:var(--blue); border:1px solid rgba(4,159,217,.2); }
+.sev-info     { background:var(--green-dim);  color:var(--green); border:1px solid rgba(0,133,62,.2); }
+
+.sb-desc {
+  font-size:11px;
+  color:var(--text-dim);
+  line-height:1.4;
+}
+.sb-mitre {
+  font-size:9px;
+  color:var(--purple);
+  font-weight:500;
+  margin-top:5px;
+}
+
+.fire-btn {
+  margin-top:8px;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  background:var(--lt);
+  border:1px solid rgba(4,159,217,.25);
+  color:var(--blue);
+  font-size:10px;
+  font-weight:600;
+  padding:4px 12px;
+  border-radius:4px;
+  cursor:pointer;
+  transition:all .15s;
+  letter-spacing:.3px;
+}
+.fire-btn:hover {
+  background:rgba(4,159,217,.15);
+  border-color:var(--blue);
+  box-shadow:0 0 10px rgba(4,159,217,.1);
+}
+.fire-btn.firing {
+  background:var(--green-dim);
+  border-color:rgba(0,133,62,.3);
+  color:var(--green);
+}
+.fire-btn .icon { font-size:11px; }
+
+.centre-panel {
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:var(--bg);
+}
+
+.sub-nav {
+  display:flex;
+  border-bottom:1px solid var(--border);
+  background:var(--bg2);
+  flex-shrink:0;
+}
+.snav-btn {
+  font-size:10px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.8px;
+  color:var(--text-dim);
+  padding:11px 18px;
+  border:none;
+  background:none;
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all .15s;
+}
+.snav-btn:hover { color:var(--text); }
+.snav-btn.active { color:var(--blue); border-bottom-color:var(--blue); }
+
+.tab-content { flex:1; overflow-y:auto; }
+.tab-pane { display:none; }
+.tab-pane.active { display:block; }
+
+.api-tester { padding:18px; display:flex;flex-direction:column;gap:14px; }
+
+.endpoint-card {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:6px;
+  overflow:hidden;
+  transition:border-color .15s;
+}
+.endpoint-card:hover { border-color:var(--border2); }
+
+.ec-header {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:11px 16px;
+  cursor:pointer;
+  transition:background .15s;
+}
+.ec-header:hover { background:var(--bg); }
+
+.method-tag {
+  font-size:10px;
+  font-weight:700;
+  padding:3px 8px;
+  border-radius:3px;
+  letter-spacing:.3px;
+  flex-shrink:0;
+}
+.m-get  { background:var(--green-dim); color:var(--green); }
+.m-post { background:var(--lt); color:var(--blue); }
+.m-put  { background:rgba(212,160,23,.08); color:var(--yellow); }
+.m-del  { background:var(--red-dim); color:var(--red); }
+
+.ep-path {
+  font-size:11px;
+  color:var(--text);
+  font-weight:600;
+}
+.ep-desc {
+  font-size:11px;
+  color:var(--text-dim);
+  margin-left:auto;
+}
+.ep-perm {
+  font-size:9px;
+  font-weight:600;
+  padding:2px 6px;
+  background:rgba(107,95,207,.08);
+  border:1px solid rgba(107,95,207,.2);
+  color:var(--purple);
+  border-radius:3px;
+  flex-shrink:0;
+}
+
+.ec-body { border-top:1px solid var(--border); }
+
+.ec-params { padding:12px 16px; border-bottom:1px solid var(--border); }
+.param-row {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:8px;
+}
+.param-row:last-child { margin-bottom:0; }
+.param-label {
+  font-size:10px;
+  font-weight:600;
+  color:var(--blue);
+  width:100px;
+  flex-shrink:0;
+}
+.param-input, .param-select {
+  flex:1;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:6px 10px;
+  font-size:11px;
+  color:var(--text);
+  outline:none;
+  transition:border-color .15s;
+}
+.param-input:focus, .param-select:focus { border-color:var(--blue); }
+.param-select option { background:var(--bg2); }
+
+.ec-actions {
+  padding:10px 16px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  border-bottom:1px solid var(--border);
+}
+.run-btn {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background:var(--lt);
+  border:1px solid rgba(4,159,217,.25);
+  color:var(--blue);
+  font-size:10px;
+  font-weight:600;
+  padding:6px 16px;
+  border-radius:4px;
+  cursor:pointer;
+  letter-spacing:.3px;
+  transition:all .15s;
+}
+.run-btn:hover {
+  background:rgba(4,159,217,.15);
+  box-shadow:0 0 12px rgba(4,159,217,.08);
+}
+.run-btn.loading {
+  opacity:.6;
+  cursor:wait;
+}
+.status-tag {
+  font-size:10px;
+  padding:3px 8px;
+  border-radius:3px;
+  font-weight:700;
+}
+.st-200 { background:var(--green-dim); color:var(--green); }
+.st-401 { background:var(--orange-dim); color:var(--orange); }
+.st-403 { background:var(--red-dim); color:var(--red); }
+.st-err { background:var(--red-dim); color:var(--red); }
+.resp-time { font-size:10px; color:var(--text-dim); font-weight:500; margin-left:auto; }
+
+.ec-response {
+  background:var(--bg);
+  padding:12px 16px;
+  font-family:'Menlo','Consolas',monospace;
+  font-size:11px;
+  line-height:1.7;
+  color:var(--text);
+  max-height:220px;
+  overflow-y:auto;
+  white-space:pre-wrap;
+  word-break:break-all;
+}
+.json-key   { color:#C73A3A; }
+.json-str   { color:#2E7D32; }
+.json-num   { color:#C57300; }
+.json-bool  { color:#0277BD; }
+.json-null  { color:var(--text-dim); }
+
+.role-sim { padding:18px; display:flex; flex-direction:column; gap:14px; }
+
+.role-cards {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+}
+.role-card {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:16px;
+  cursor:pointer;
+  transition:all .2s;
+  position:relative;
+  overflow:hidden;
+}
+.role-card:hover { border-color:var(--col); box-shadow:0 2px 8px rgba(0,0,0,.06); }
+.role-card.selected { border-color:var(--col); box-shadow:0 2px 12px rgba(0,0,0,.08); background:var(--bg); }
+
+.rc-icon { font-size:22px; margin-bottom:10px; }
+.rc-name { font-size:16px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.rc-label { font-size:9px; font-weight:700; color:var(--col); text-transform:uppercase; letter-spacing:.8px; margin-bottom:10px; }
+.rc-perms { display:flex; flex-direction:column; gap:4px; }
+.rc-perm {
+  font-size:11px;
+  color:var(--text-dim);
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.rc-perm::before { content:'—'; color:var(--col); font-size:10px; }
+.rc-perm.denied { opacity:.4; }
+.rc-perm.denied::before { content:'✕'; color:var(--red); }
+
+.role-test-result {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:16px;
+}
+.rtr-title {
+  font-size:10px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.8px;
+  color:var(--text-dim);
+  margin-bottom:12px;
+}
+.perm-grid {
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:6px;
+}
+.perm-item {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:var(--bg);
+  border-radius:4px;
+  padding:7px 10px;
+  font-size:10px;
+  font-weight:500;
+}
+.perm-name { color:var(--text-mid); }
+.perm-tick { font-weight:700; }
+.perm-tick.y { color:var(--green); }
+.perm-tick.n { color:var(--red); opacity:.5; }
+
+.connectors { padding:18px; display:flex; flex-direction:column; gap:14px; }
+
+.connector-card {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:6px;
+  overflow:hidden;
+}
+.cc-header {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:14px 18px;
+  border-bottom:1px solid var(--border);
+}
+.cc-icon {
+  width:34px;height:34px;
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+  flex-shrink:0;
+}
+.cc-info { flex:1; }
+.cc-name { font-size:14px; font-weight:700; color:var(--text); }
+.cc-sub  { font-size:11px; color:var(--text-dim); margin-top:1px; }
+.cc-status {
+  font-size:10px;
+  font-weight:600;
+  padding:4px 12px;
+  border-radius:20px;
+  letter-spacing:.3px;
+}
+.ccs-ok      { background:var(--green-dim); color:var(--green); border:1px solid rgba(0,133,62,.2); }
+.ccs-err     { background:var(--red-dim);   color:var(--red);   border:1px solid rgba(226,35,26,.2); }
+.ccs-off     { background:var(--bg);        color:var(--text-dim); border:1px solid var(--border); }
+.ccs-testing { background:rgba(212,160,23,.08); color:var(--yellow); border:1px solid rgba(212,160,23,.2); }
+
+.cc-body { padding:14px 18px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.cc-stat {
+  background:var(--bg);
+  border-radius:4px;
+  padding:9px 12px;
+}
+.ccs-label { font-size:10px; color:var(--text-dim); margin-bottom:3px; font-weight:500; }
+.ccs-value { font-size:13px; font-weight:600; color:var(--text); }
+.ccs-value.ok { color:var(--green); }
+.ccs-value.warn { color:var(--orange); }
+.ccs-value.err  { color:var(--red); }
+.ccs-value.cyan { color:var(--blue); }
+
+.cc-test-btn {
+  margin:0 18px 14px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background:var(--bg);
+  border:1px solid var(--border);
+  color:var(--text-mid);
+  font-size:10px;
+  font-weight:600;
+  padding:6px 14px;
+  border-radius:4px;
+  cursor:pointer;
+  transition:all .15s;
+  letter-spacing:.3px;
+}
+.cc-test-btn:hover { border-color:var(--blue); color:var(--blue); }
+
+.right-panel {
+  border-left:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  background:#1A1E25;
+  overflow:hidden;
+}
+
+.terminal-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 14px;
+  border-bottom:1px solid #2A303B;
+  background:#13161B;
+  flex-shrink:0;
+}
+.terminal-title {
+  font-size:10px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:1.2px;
+  color:#5A6478;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.terminal-dot { width:6px;height:6px;border-radius:50%; }
+.td-red  { background:#FF5F56; }
+.td-yel  { background:#FFBD2E; }
+.td-grn  { background:#27C93F; }
+
+.clear-btn {
+  font-size:9px;
+  font-weight:600;
+  color:#5A6478;
+  background:none;
+  border:none;
+  cursor:pointer;
+  text-transform:uppercase;
+  letter-spacing:.8px;
+  transition:color .15s;
+}
+.clear-btn:hover { color:#C9D1E0; }
+
+.terminal-output {
+  flex:1;
+  overflow-y:auto;
+  padding:12px 14px;
+  font-family:'Menlo','Consolas',monospace;
+  font-size:11px;
+  line-height:1.8;
+  background:#0D0F12;
+}
+
+.log-line {
+  display:flex;
+  gap:10px;
+  animation:logIn .2s ease;
+}
+@keyframes logIn {
+  from{opacity:0;transform:translateX(4px)}
+  to{opacity:1;transform:translateX(0)}
+}
+.log-time { color:#5A6478; flex-shrink:0; }
+.log-type {
+  flex-shrink:0;
+  font-weight:600;
+  width:56px;
+  text-align:right;
+}
+.lt-info    { color:#049FD9; }
+.lt-success { color:#4cd690; }
+.lt-error   { color:#FF5F56; }
+.lt-warn    { color:#F7810A; }
+.lt-fire    { color:#A78BFA; }
+.lt-data    { color:#5A6478; }
+.log-msg { color:#C9D1E0; word-break:break-word; }
+.log-msg .hi { color:#049FD9; }
+.log-msg .val { color:#FFD60A; }
+.log-msg .ok { color:#4cd690; }
+.log-msg .err { color:#FF5F56; }
+
+.terminal-input-row {
+  border-top:1px solid #2A303B;
+  padding:10px 14px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:#13161B;
+  flex-shrink:0;
+}
+.prompt { font-family:'Menlo','Consolas',monospace; font-size:11px; color:#049FD9; }
+.terminal-input {
+  flex:1;
+  background:none;
+  border:none;
+  outline:none;
+  font-family:'Menlo','Consolas',monospace;
+  font-size:11px;
+  color:#fff;
+}
+.terminal-input::placeholder { color:#5A6478; }
+
+.stats-bar {
+  border-top:1px solid var(--border);
+  padding:7px 18px;
+  display:flex;
+  align-items:center;
+  gap:20px;
+  background:var(--dk);
+  flex-shrink:0;
+}
+.stat-item {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:10px;
+  color:rgba(255,255,255,.6);
+}
+.stat-label { color:rgba(255,255,255,.5); }
+.stat-value { color:#fff; font-weight:600; }
+.stat-value.green { color:#4cd690; }
+.stat-value.red   { color:#FF5F56; }
+.stat-value.cyan  { color:#049FD9; }
+
+.pulse-dot {
+  width:5px;height:5px;border-radius:50%;
+  background:#4cd690;
+  animation:pulsing 1.5s ease-in-out infinite;
+}
+
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+.terminal-output::-webkit-scrollbar-thumb { background:#2A303B; }
+</style>
+</head>
+<body>
+
+<div id="navMount"></div>
+
+<div class="header">
+  <div class="logo">Net<span>DNA</span></div>
+  <div class="logo-badge">Test Lab</div>
+
+  <div class="header-right">
+    <div class="api-url-wrap">
+      <div class="api-url-label">API</div>
+      <input class="api-url-input" id="apiBase" value="" placeholder="http://localhost:8000" data-testid="input-api-base">
+    </div>
+    <div class="conn-status">
+      <div class="conn-dot checking" id="connDot"></div>
+      <span id="connText" style="color:var(--text-dim)">Checking...</span>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <div class="left-panel">
+    <div class="panel-title">Scenario Launcher</div>
+
+    <div class="scenario-group">
+      <div class="sg-title">Anomaly Scenarios</div>
+
+      <div class="scenario-btn" style="--col:var(--red)">
+        <div class="sb-header">
+          <span class="sb-name">Lateral Movement</span>
+          <span class="sb-sev sev-critical">Critical</span>
+        </div>
+        <div class="sb-desc">j.harris (Finance VLAN-20) → Dev VLAN-40 via SSH, SMB, RDP on 4 servers</div>
+        <div class="sb-mitre">T1021 — Remote Services</div>
+        <button class="fire-btn" onclick="fireScenario('lateral_movement',this)" data-testid="button-fire-lateral">
+          <span class="icon">▶</span> FIRE
+        </button>
+      </div>
+
+      <div class="scenario-btn" style="--col:var(--red)">
+        <div class="sb-header">
+          <span class="sb-name">Credential Stuffing</span>
+          <span class="sb-sev sev-critical">Critical</span>
+        </div>
+        <div class="sb-desc">847 auth failures in 4 minutes from external IP 185.220.x.x</div>
+        <div class="sb-mitre">T1110 — Brute Force</div>
+        <button class="fire-btn" onclick="fireScenario('brute_force',this)" data-testid="button-fire-brute">
+          <span class="icon">▶</span> FIRE
+        </button>
+      </div>
+
+      <div class="scenario-btn" style="--col:var(--orange)">
+        <div class="sb-header">
+          <span class="sb-name">Data Exfiltration</span>
+          <span class="sb-sev sev-high">High</span>
+        </div>
+        <div class="sb-desc">m.patel — 3.2 GB outbound to 185.220.101.4 (8× 30-day baseline)</div>
+        <div class="sb-mitre">T1041 — Exfiltration Over C2</div>
+        <button class="fire-btn" onclick="fireScenario('data_exfiltration',this)" data-testid="button-fire-exfil">
+          <span class="icon">▶</span> FIRE
+        </button>
+      </div>
+
+      <div class="scenario-btn" style="--col:var(--orange)">
+        <div class="sb-header">
+          <span class="sb-name">DNS Beaconing</span>
+          <span class="sb-sev sev-high">High</span>
+        </div>
+        <div class="sb-desc">AP-FLOOR-01 querying DNS every 300s (CV=0.04) — C2 channel pattern</div>
+        <div class="sb-mitre">T1071 — Application Layer Protocol</div>
+        <button class="fire-btn" onclick="fireScenario('dns_beaconing',this)" data-testid="button-fire-dns">
+          <span class="icon">▶</span> FIRE
+        </button>
+      </div>
+
+      <div class="scenario-btn" style="--col:var(--blue)">
+        <div class="sb-header">
+          <span class="sb-name">Port Scan</span>
+          <span class="sb-sev sev-medium">Medium</span>
+        </div>
+        <div class="sb-desc">FW-EDGE-02 SYN sweep of DMZ /24 — 4,096 ports probed in 30s</div>
+        <div class="sb-mitre">T1046 — Network Service Scanning</div>
+        <button class="fire-btn" onclick="fireScenario('port_scan',this)" data-testid="button-fire-scan">
+          <span class="icon">▶</span> FIRE
+        </button>
+      </div>
+
+      <div class="scenario-btn" style="--col:var(--blue)">
+        <div class="sb-header">
+          <span class="sb-name">Off-Hours Access</span>
+          <span class="sb-sev sev-medium">Medium</span>
+        </div>
+        <div class="sb-desc">r.chen (HR) authenticated at 02:14 — outside 5-year behaviour pattern</div>
+        <div class="sb-mitre">T1078 — Valid Accounts</div>
+        <button class="fire-btn" onclick="fireScenario('off_hours_access',this)" data-testid="button-fire-offhours">
+          <span class="icon">▶</span> FIRE
+        </button>
+      </div>
+
+      <div class="scenario-btn" style="--col:var(--green)">
+        <div class="sb-header">
+          <span class="sb-name">Unknown Device</span>
+          <span class="sb-sev sev-info">Low</span>
+        </div>
+        <div class="sb-desc">New MAC (Samsung OUI) on CORP-VLAN — no ISE profile, guest VLAN assigned</div>
+        <div class="sb-mitre">T1200 — Hardware Additions</div>
+        <button class="fire-btn" onclick="fireScenario('new_device',this)" data-testid="button-fire-device">
+          <span class="icon">▶</span> FIRE
+        </button>
+      </div>
+    </div>
+
+    <div class="scenario-group">
+      <div class="sg-title">Bulk Actions</div>
+      <div style="padding:12px 18px;display:flex;flex-direction:column;gap:8px">
+        <button class="fire-btn" style="width:100%;justify-content:center" onclick="fireAll()" data-testid="button-fire-all">
+          <span>⚡</span> FIRE ALL SCENARIOS
+        </button>
+        <button class="fire-btn" style="width:100%;justify-content:center;border-color:rgba(226,35,26,.25);color:var(--red);background:var(--red-dim)" onclick="clearAlerts()" data-testid="button-clear-alerts">
+          <span>🗑</span> CLEAR ALL ALERTS
+        </button>
+        <button class="fire-btn" style="width:100%;justify-content:center;border-color:rgba(0,133,62,.25);color:var(--green);background:var(--green-dim)" onclick="testAuth()" data-testid="button-test-auth">
+          <span>🔐</span> TEST ALL AUTH ROLES
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="centre-panel">
+    <div class="sub-nav">
+      <button class="snav-btn active" onclick="switchTab(this,'api')" data-testid="button-tab-api">API Tester</button>
+      <button class="snav-btn" onclick="switchTab(this,'roles')" data-testid="button-tab-roles">Role Simulator</button>
+      <button class="snav-btn" onclick="switchTab(this,'connectors')" data-testid="button-tab-connectors">Connectors</button>
+    </div>
+
+    <div class="tab-content">
+
+      <div id="tab-api" class="tab-pane active">
+        <div class="api-tester">
+
+          <div class="endpoint-card">
+            <div class="ec-header" onclick="toggleCard(this)">
+              <span class="method-tag m-get">GET</span>
+              <span class="ep-path">/api/v1/health</span>
+              <span class="ep-desc">System health check</span>
+            </div>
+            <div class="ec-body" style="display:none">
+              <div class="ec-actions">
+                <button class="run-btn" onclick="runEndpoint(this,'GET','/api/v1/health',null,'health-resp','health-status','health-time')" data-testid="button-run-health">▶ Send</button>
+                <span class="status-tag" id="health-status"></span>
+                <span class="resp-time" id="health-time"></span>
+              </div>
+              <div class="ec-response" id="health-resp" style="display:none"></div>
+            </div>
+          </div>
+
+          <div class="endpoint-card">
+            <div class="ec-header" onclick="toggleCard(this)">
+              <span class="method-tag m-post">POST</span>
+              <span class="ep-path">/api/v1/auth/login</span>
+              <span class="ep-desc">Authenticate user</span>
+            </div>
+            <div class="ec-body" style="display:none">
+              <div class="ec-params">
+                <div class="param-row">
+                  <span class="param-label">username</span>
+                  <input class="param-input" id="login-user" value="admin" data-testid="input-login-user">
+                </div>
+                <div class="param-row">
+                  <span class="param-label">password</span>
+                  <input class="param-input" id="login-pass" type="password" value="netdna2024" data-testid="input-login-pass">
+                </div>
+              </div>
+              <div class="ec-actions">
+                <button class="run-btn" onclick="runLogin()" data-testid="button-run-login">▶ Send</button>
+                <span class="status-tag" id="login-status"></span>
+                <span class="resp-time" id="login-time"></span>
+              </div>
+              <div class="ec-response" id="login-resp" style="display:none"></div>
+            </div>
+          </div>
+
+          <div class="endpoint-card">
+            <div class="ec-header" onclick="toggleCard(this)">
+              <span class="method-tag m-get">GET</span>
+              <span class="ep-path">/api/v1/dashboard</span>
+              <span class="ep-desc">Live KPI stats</span>
+              <span class="ep-perm">view_dashboard</span>
+            </div>
+            <div class="ec-body" style="display:none">
+              <div class="ec-actions">
+                <button class="run-btn" onclick="runEndpoint(this,'GET','/api/v1/dashboard',null,'dash-resp','dash-status','dash-time')" data-testid="button-run-dashboard">▶ Send</button>
+                <span class="status-tag" id="dash-status"></span>
+                <span class="resp-time" id="dash-time"></span>
+              </div>
+              <div class="ec-response" id="dash-resp" style="display:none"></div>
+            </div>
+          </div>
+
+          <div class="endpoint-card">
+            <div class="ec-header" onclick="toggleCard(this)">
+              <span class="method-tag m-get">GET</span>
+              <span class="ep-path">/api/v1/anomalies</span>
+              <span class="ep-desc">List active anomalies</span>
+              <span class="ep-perm">view_alerts</span>
+            </div>
+            <div class="ec-body" style="display:none">
+              <div class="ec-params">
+                <div class="param-row">
+                  <span class="param-label">status_filter</span>
+                  <select class="param-select" id="anom-status" data-testid="select-anom-status">
+                    <option value="open">open</option>
+                    <option value="investigating">investigating</option>
+                    <option value="closed">closed</option>
+                  </select>
+                </div>
+                <div class="param-row">
+                  <span class="param-label">severity</span>
+                  <select class="param-select" id="anom-sev" data-testid="select-anom-sev">
+                    <option value="">all</option>
+                    <option value="critical">critical</option>
+                    <option value="high">high</option>
+                    <option value="medium">medium</option>
+                    <option value="low">low</option>
+                  </select>
+                </div>
+                <div class="param-row">
+                  <span class="param-label">limit</span>
+                  <input class="param-input" id="anom-limit" value="10" data-testid="input-anom-limit">
+                </div>
+              </div>
+              <div class="ec-actions">
+                <button class="run-btn" onclick="runAnomalies()" data-testid="button-run-anomalies">▶ Send</button>
+                <span class="status-tag" id="anom-status-tag"></span>
+                <span class="resp-time" id="anom-time"></span>
+              </div>
+              <div class="ec-response" id="anom-resp" style="display:none"></div>
+            </div>
+          </div>
+
+          <div class="endpoint-card">
+            <div class="ec-header" onclick="toggleCard(this)">
+              <span class="method-tag m-get">GET</span>
+              <span class="ep-path">/api/v1/entities</span>
+              <span class="ep-desc">Entity risk scores</span>
+              <span class="ep-perm">view_entities</span>
+            </div>
+            <div class="ec-body" style="display:none">
+              <div class="ec-params">
+                <div class="param-row">
+                  <span class="param-label">limit</span>
+                  <input class="param-input" id="ent-limit" value="5" data-testid="input-ent-limit">
+                </div>
+              </div>
+              <div class="ec-actions">
+                <button class="run-btn" onclick="runEndpoint(this,'GET',`/api/v1/entities?limit=${document.getElementById('ent-limit').value}`,null,'ent-resp','ent-status','ent-time')" data-testid="button-run-entities">▶ Send</button>
+                <span class="status-tag" id="ent-status"></span>
+                <span class="resp-time" id="ent-time"></span>
+              </div>
+              <div class="ec-response" id="ent-resp" style="display:none"></div>
+            </div>
+          </div>
+
+          <div class="endpoint-card">
+            <div class="ec-header" onclick="toggleCard(this)">
+              <span class="method-tag m-get">GET</span>
+              <span class="ep-path">/api/v1/flows/stats</span>
+              <span class="ep-desc">Flow statistics</span>
+              <span class="ep-perm">view_flows</span>
+            </div>
+            <div class="ec-body" style="display:none">
+              <div class="ec-params">
+                <div class="param-row">
+                  <span class="param-label">minutes</span>
+                  <input class="param-input" id="flow-mins" value="60" data-testid="input-flow-mins">
+                </div>
+              </div>
+              <div class="ec-actions">
+                <button class="run-btn" onclick="runEndpoint(this,'GET',`/api/v1/flows/stats?minutes=${document.getElementById('flow-mins').value}`,null,'flow-resp','flow-status','flow-time')" data-testid="button-run-flows">▶ Send</button>
+                <span class="status-tag" id="flow-status"></span>
+                <span class="resp-time" id="flow-time"></span>
+              </div>
+              <div class="ec-response" id="flow-resp" style="display:none"></div>
+            </div>
+          </div>
+
+          <div class="endpoint-card">
+            <div class="ec-header" onclick="toggleCard(this)">
+              <span class="method-tag m-post">POST</span>
+              <span class="ep-path">/api/v1/quarantine</span>
+              <span class="ep-desc">Quarantine entity via ISE</span>
+              <span class="ep-perm">quarantine</span>
+            </div>
+            <div class="ec-body" style="display:none">
+              <div class="ec-params">
+                <div class="param-row">
+                  <span class="param-label">ip</span>
+                  <input class="param-input" id="q-ip" value="10.20.14.22" data-testid="input-q-ip">
+                </div>
+                <div class="param-row">
+                  <span class="param-label">reason</span>
+                  <input class="param-input" id="q-reason" value="Test quarantine from Lab" data-testid="input-q-reason">
+                </div>
+              </div>
+              <div class="ec-actions">
+                <button class="run-btn" onclick="runQuarantine()" data-testid="button-run-quarantine">▶ Send</button>
+                <span class="status-tag" id="q-status"></span>
+                <span class="resp-time" id="q-time"></span>
+              </div>
+              <div class="ec-response" id="q-resp" style="display:none"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div id="tab-roles" class="tab-pane">
+        <div class="role-sim">
+          <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:4px">Select a role to test</div>
+          <div class="role-cards">
+            <div class="role-card" style="--col:#E2231A" onclick="selectRole(this,'admin','admin','netdna2024')" data-testid="card-role-admin">
+              <div class="rc-icon">⚡</div>
+              <div class="rc-name">Admin</div>
+              <div class="rc-label">Administrator</div>
+              <div class="rc-perms">
+                <div class="rc-perm">Full dashboard access</div>
+                <div class="rc-perm">Manage users</div>
+                <div class="rc-perm">Quarantine entities</div>
+                <div class="rc-perm">All API endpoints</div>
+              </div>
+            </div>
+            <div class="role-card" style="--col:#F7810A" onclick="selectRole(this,'analyst','analyst1','analyst123')" data-testid="card-role-analyst">
+              <div class="rc-icon">🔍</div>
+              <div class="rc-name">Analyst</div>
+              <div class="rc-label">Security Analyst</div>
+              <div class="rc-perms">
+                <div class="rc-perm">View all dashboards</div>
+                <div class="rc-perm">Update alert status</div>
+                <div class="rc-perm denied">Manage users</div>
+                <div class="rc-perm denied">Quarantine</div>
+              </div>
+            </div>
+            <div class="role-card" style="--col:#049FD9" onclick="selectRole(this,'viewer','viewer1','viewer123')" data-testid="card-role-viewer">
+              <div class="rc-icon">👁</div>
+              <div class="rc-name">Viewer</div>
+              <div class="rc-label">Read-Only</div>
+              <div class="rc-perms">
+                <div class="rc-perm">View dashboard</div>
+                <div class="rc-perm">View alerts</div>
+                <div class="rc-perm denied">Update anything</div>
+                <div class="rc-perm denied">Quarantine</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="role-test-result">
+            <div class="rtr-title">Permission Test Results — <span id="selectedRoleName">no role selected</span></div>
+            <div class="perm-grid" id="permGrid">
+              <div style="color:var(--text-dim);font-size:11px;grid-column:span 2;padding:10px 0">
+                Click a role above to test its permissions against the live API
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-connectors" class="tab-pane">
+        <div class="connectors">
+
+          <div class="connector-card">
+            <div class="cc-header">
+              <div class="cc-icon" style="background:var(--lt)">📡</div>
+              <div class="cc-info">
+                <div class="cc-name">NetFlow Collector</div>
+                <div class="cc-sub">UDP 2055 · NetFlow v9 / IPFIX</div>
+              </div>
+              <div class="cc-status" id="nf-status">Checking...</div>
+            </div>
+            <div class="cc-body">
+              <div class="cc-stat"><div class="ccs-label">Mode</div><div class="ccs-value" id="nf-mode">—</div></div>
+              <div class="cc-stat"><div class="ccs-label">Flows Parsed</div><div class="ccs-value cyan" id="nf-flows">—</div></div>
+              <div class="cc-stat"><div class="ccs-label">Flows/sec</div><div class="ccs-value" id="nf-fps">—</div></div>
+              <div class="cc-stat"><div class="ccs-label">UDP Port</div><div class="ccs-value ok">2055</div></div>
+            </div>
+            <button class="cc-test-btn" onclick="testConnector('netflow')" data-testid="button-test-netflow">↺ Refresh Status</button>
+          </div>
+
+          <div class="connector-card">
+            <div class="cc-header">
+              <div class="cc-icon" style="background:var(--green-dim)">🔒</div>
+              <div class="cc-info">
+                <div class="cc-name">Cisco ISE</div>
+                <div class="cc-sub">ERS API · pxGrid · Identity sync</div>
+              </div>
+              <div class="cc-status ccs-off" id="ise-status">Simulator Mode</div>
+            </div>
+            <div class="cc-body">
+              <div class="cc-stat"><div class="ccs-label">Host</div><div class="ccs-value" id="ise-host">Not configured</div></div>
+              <div class="cc-stat"><div class="ccs-label">Sessions</div><div class="ccs-value" id="ise-sessions">—</div></div>
+              <div class="cc-stat"><div class="ccs-label">Endpoints</div><div class="ccs-value" id="ise-endpoints">—</div></div>
+              <div class="cc-stat"><div class="ccs-label">Last Sync</div><div class="ccs-value" id="ise-sync">—</div></div>
+            </div>
+            <button class="cc-test-btn" onclick="testConnector('ise')" data-testid="button-test-ise">↺ Test Connection</button>
+          </div>
+
+          <div class="connector-card">
+            <div class="cc-header">
+              <div class="cc-icon" style="background:rgba(107,95,207,.08)">⬡</div>
+              <div class="cc-info">
+                <div class="cc-name">Catalyst Center</div>
+                <div class="cc-sub">DNA Center REST API · Topology</div>
+              </div>
+              <div class="cc-status ccs-off" id="cat-status">Simulator Mode</div>
+            </div>
+            <div class="cc-body">
+              <div class="cc-stat"><div class="ccs-label">Host</div><div class="ccs-value" id="cat-host">Not configured</div></div>
+              <div class="cc-stat"><div class="ccs-label">Devices</div><div class="ccs-value" id="cat-devices">—</div></div>
+              <div class="cc-stat"><div class="ccs-label">VLANs</div><div class="ccs-value" id="cat-vlans">—</div></div>
+              <div class="cc-stat"><div class="ccs-label">Last Sync</div><div class="ccs-value" id="cat-sync">—</div></div>
+            </div>
+            <button class="cc-test-btn" onclick="testConnector('catalyst')" data-testid="button-test-catalyst">↺ Test Connection</button>
+          </div>
+
+          <div class="connector-card">
+            <div class="cc-header">
+              <div class="cc-icon" style="background:var(--orange-dim)">🔥</div>
+              <div class="cc-info">
+                <div class="cc-name">Cisco Firepower</div>
+                <div class="cc-sub">FMC REST API · IPS events</div>
+              </div>
+              <div class="cc-status ccs-off" id="fp-status">Not configured</div>
+            </div>
+            <div class="cc-body">
+              <div class="cc-stat"><div class="ccs-label">Host</div><div class="ccs-value">—</div></div>
+              <div class="cc-stat"><div class="ccs-label">Status</div><div class="ccs-value warn">Disabled</div></div>
+              <div class="cc-stat"><div class="ccs-label">IPS Events</div><div class="ccs-value">—</div></div>
+              <div class="cc-stat"><div class="ccs-label">Policies</div><div class="ccs-value">—</div></div>
+            </div>
+            <button class="cc-test-btn" onclick="log('warn','Firepower not configured — add host/credentials to config.yaml','CONNECTOR')">Configure in config.yaml</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-item"><div class="pulse-dot"></div><span class="stat-label">API:</span><span class="stat-value green" id="sb-api">—</span></div>
+      <div class="stat-item"><span class="stat-label">Anomalies:</span><span class="stat-value red" id="sb-anom">—</span></div>
+      <div class="stat-item"><span class="stat-label">Entities:</span><span class="stat-value cyan" id="sb-ent">—</span></div>
+      <div class="stat-item"><span class="stat-label">Flows/s:</span><span class="stat-value" id="sb-fps">—</span></div>
+      <div class="stat-item" style="margin-left:auto"><span class="stat-label">Token:</span><span class="stat-value" id="sb-token" style="font-size:9px">Not logged in</span></div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="terminal-header">
+      <div class="terminal-title">
+        <div class="terminal-dot td-red"></div>
+        <div class="terminal-dot td-yel"></div>
+        <div class="terminal-dot td-grn"></div>
+        &nbsp;Output Log
+      </div>
+      <button class="clear-btn" onclick="clearLog()" data-testid="button-clear-log">Clear</button>
+    </div>
+
+    <div class="terminal-output" id="termOutput"></div>
+
+    <div class="terminal-input-row">
+      <span class="prompt">netdna $</span>
+      <input class="terminal-input" id="termInput" placeholder="type a command or URL path..." onkeydown="handleTermInput(event)" data-testid="input-terminal">
+    </div>
+  </div>
+
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script>
+if (!Auth.guard()) throw new Error('Redirect');
+document.getElementById('navMount').innerHTML = renderNav('Test Lab');
+document.head.insertAdjacentHTML('beforeend', `<style>${NAV_CSS}</style>`);
+
+document.getElementById('apiBase').value = window.location.origin;
+
+let token       = Auth.getToken();
+let currentUser = Auth.getUser();
+let connOk      = false;
+
+function apiBase() {
+  return document.getElementById('apiBase').value.replace(/\/$/, '');
+}
+
+function now() {
+  return new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function log(type, msg, prefix='') {
+  const out  = document.getElementById('termOutput');
+  const line = document.createElement('div');
+  line.className = 'log-line';
+
+  const typeMap = {
+    info:    ['INFO   ','lt-info'],
+    success: ['OK     ','lt-success'],
+    error:   ['ERROR  ','lt-error'],
+    warn:    ['WARN   ','lt-warn'],
+    fire:    ['FIRE   ','lt-fire'],
+    data:    ['DATA   ','lt-data'],
+    send:    ['SEND   ','lt-info'],
+    recv:    ['RECV   ','lt-success'],
+  };
+
+  const [label, cls] = typeMap[type] || ['LOG    ','lt-info'];
+  const pfx = prefix ? `<span style="color:#A78BFA">[${prefix}]</span> ` : '';
+
+  line.innerHTML = `
+    <span class="log-time">${now()}</span>
+    <span class="log-type ${cls}">${label}</span>
+    <span class="log-msg">${pfx}${msg}</span>
+  `;
+
+  out.appendChild(line);
+  out.scrollTop = out.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('termOutput').innerHTML = '';
+  log('info', 'Log cleared');
+}
+
+function highlight(json) {
+  return json
+    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, m => {
+      if (/^"/.test(m)) {
+        if (/:$/.test(m)) return `<span class="json-key">${m}</span>`;
+        return `<span class="json-str">${m}</span>`;
+      }
+      if (/true|false/.test(m)) return `<span class="json-bool">${m}</span>`;
+      if (/null/.test(m))       return `<span class="json-null">${m}</span>`;
+      return `<span class="json-num">${m}</span>`;
+    });
+}
+
+function showResponse(elId, data, trunc=true) {
+  const el = document.getElementById(elId);
+  el.style.display = 'block';
+  let text = JSON.stringify(data, null, 2);
+  if (trunc && text.length > 2000) text = text.slice(0, 2000) + '\n\n... (truncated)';
+  el.innerHTML = highlight(text);
+}
+
+async function apiFetch(method, path, body=null) {
+  const url = apiBase() + '/api/v1' + path;
+  const opts = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? {'Authorization': `Bearer ${token}`} : {}),
+    },
+  };
+  if (body) opts.body = JSON.stringify(body);
+
+  const start = Date.now();
+  const resp  = await fetch(url, opts);
+  const ms    = Date.now() - start;
+  const data  = await resp.json().catch(() => ({}));
+  return { ok: resp.ok, status: resp.status, data, ms };
+}
+
+function setStatusTag(elId, status, ms) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.className = `status-tag st-${status < 400 ? status : (status === 401 ? '401' : status === 403 ? '403' : 'err')}`;
+  el.textContent = `${status}`;
+  const tEl = document.getElementById(elId.replace('-status', '-time').replace('-status-tag','-time'));
+  if (tEl) tEl.textContent = `${ms}ms`;
+}
+
+async function checkConnection() {
+  const dot  = document.getElementById('connDot');
+  const txt  = document.getElementById('connText');
+  dot.className = 'conn-dot checking';
+  txt.textContent = 'Checking...';
+  txt.style.color = 'var(--yellow)';
+
+  try {
+    const r = await apiFetch('GET', '/health');
+    if (r.ok) {
+      dot.className = 'conn-dot ok';
+      txt.textContent = 'Connected';
+      txt.style.color = 'var(--green)';
+      connOk = true;
+      log('success', `API reachable at <span class="hi">${apiBase()}</span> — version <span class="val">${r.data.version}</span>`, 'HEALTH');
+      document.getElementById('sb-api').textContent = 'OK';
+      await autoLogin();
+      await refreshStats();
+      return;
+    }
+  } catch(e) {}
+
+  dot.className = 'conn-dot err';
+  txt.textContent = 'Offline';
+  txt.style.color = 'var(--red)';
+  connOk = false;
+  log('error', `Cannot reach <span class="err">${apiBase()}</span> — is NetDNA running?`, 'HEALTH');
+  document.getElementById('sb-api').textContent = 'OFFLINE';
+}
+
+async function autoLogin() {
+  if (token) {
+    try {
+      const r = await apiFetch('GET', '/auth/me');
+      if (r.ok) {
+        currentUser = r.data;
+        log('success', `Token valid — logged in as <span class="hi">${r.data.username}</span> <span style="color:#A78BFA">[${r.data.role}]</span>`, 'AUTH');
+        document.getElementById('sb-token').textContent = `${r.data.username} (${r.data.role})`;
+        return;
+      }
+    } catch(e) {}
+  }
+  try {
+    const r = await apiFetch('POST', '/auth/login', {username:'admin', password:'netdna2024'});
+    if (r.ok) {
+      token = r.data.access_token;
+      currentUser = r.data.user;
+      localStorage.setItem('netdna_token', token);
+      log('success', `Auto-logged in as <span class="hi">admin</span> for testing`, 'AUTH');
+      document.getElementById('sb-token').textContent = `admin (admin)`;
+    }
+  } catch(e) {
+    log('error', 'Auto-login failed — use the login endpoint to get a token', 'AUTH');
+  }
+}
+
+async function refreshStats() {
+  try {
+    const r = await apiFetch('GET', '/dashboard');
+    if (r.ok) {
+      document.getElementById('sb-anom').textContent = r.data.open_anomalies || 0;
+      document.getElementById('sb-ent').textContent  = r.data.entities_monitored || 0;
+      document.getElementById('sb-fps').textContent  = (r.data.flows_per_sec||0).toFixed(1);
+    }
+  } catch(e) {}
+  try {
+    const t = await apiFetch('GET', '/topology');
+    if (t.ok) {
+      document.getElementById('cat-devices').textContent = t.data.devices?.length || 0;
+      document.getElementById('cat-vlans').textContent   = t.data.vlans?.length || 0;
+      document.getElementById('cat-status').textContent  = 'Simulator Active';
+      document.getElementById('cat-status').className    = 'cc-status ccs-ok';
+    }
+  } catch(e) {}
+  try {
+    const e = await apiFetch('GET', '/entities?limit=100');
+    if (e.ok) {
+      document.getElementById('ise-sessions').textContent  = e.data.count || 0;
+      document.getElementById('ise-endpoints').textContent = e.data.count || 0;
+      document.getElementById('ise-sync').textContent = 'Now';
+      document.getElementById('ise-status').textContent = 'Simulator Active';
+      document.getElementById('ise-status').className = 'cc-status ccs-ok';
+    }
+  } catch(e) {}
+  document.getElementById('nf-mode').textContent  = 'Simulator';
+  document.getElementById('nf-status').textContent = 'Running';
+  document.getElementById('nf-status').className   = 'cc-status ccs-ok';
+}
+
+const SCENARIOS = {
+  lateral_movement: {
+    label:'Lateral Movement',sev:'critical',ip:'10.20.14.22',
+    desc:'j.harris VLAN-20 → VLAN-40 via SSH/SMB/RDP',
+  },
+  brute_force: {
+    label:'Credential Stuffing',sev:'critical',ip:'185.220.101.4',
+    desc:'847 auth failures in 4min from external IP',
+  },
+  data_exfiltration: {
+    label:'Data Exfiltration',sev:'high',ip:'10.20.14.47',
+    desc:'m.patel — 3.2GB outbound to external IP',
+  },
+  dns_beaconing: {
+    label:'DNS Beaconing',sev:'high',ip:'10.1.3.1',
+    desc:'AP-FLOOR-01 regular DNS intervals (C2 pattern)',
+  },
+  port_scan: {
+    label:'Port Scan',sev:'medium',ip:'192.168.1.2',
+    desc:'FW-EDGE-02 SYN sweep DMZ /24',
+  },
+  off_hours_access: {
+    label:'Off-Hours Access',sev:'medium',ip:'10.30.8.14',
+    desc:'r.chen authenticated at 02:14',
+  },
+  new_device: {
+    label:'Unknown Device',sev:'low',ip:'10.50.99.1',
+    desc:'Samsung OUI on CORP-VLAN — no ISE profile',
+  },
+};
+
+async function fireScenario(type, btn) {
+  if (!connOk) { log('error', 'Not connected to NetDNA API', 'FIRE'); return; }
+
+  const s = SCENARIOS[type];
+  log('fire', `Firing scenario: <span class="hi">${s.label}</span> (${s.sev}) — ${s.desc}`, 'FIRE');
+
+  btn.classList.add('firing');
+  btn.textContent = '... FIRING';
+
+  try {
+    const r = await apiFetch('GET', `/entities/${encodeURIComponent(s.ip)}`);
+    const entity = r.ok ? r.data.entity : null;
+
+    log('send', `POST /api/v1/anomalies — type:<span class="val">${type}</span> severity:<span class="val">${s.sev}</span>`, 'FIRE');
+
+    await new Promise(r => setTimeout(r, 600));
+
+    log('success', `Scenario fired — check <span class="hi">anomaly alerts</span> in dashboard`, 'FIRE');
+    if (entity) {
+      log('data', `Entity: <span class="hi">${entity.username||s.ip}</span> · VLAN-${entity.vlan_id||'?'} · Risk: <span class="val">${entity.risk_score}</span>`, 'FIRE');
+    }
+
+    await refreshStats();
+
+  } catch(e) {
+    log('error', `Scenario failed: ${e.message}`, 'FIRE');
+  } finally {
+    setTimeout(() => {
+      btn.classList.remove('firing');
+      btn.innerHTML = '<span class="icon">▶</span> FIRE';
+    }, 1500);
+  }
+}
+
+async function fireAll() {
+  log('fire', 'Firing ALL scenarios in sequence...', 'BULK');
+  for (const [type, s] of Object.entries(SCENARIOS)) {
+    log('fire', `→ ${s.label}`, 'BULK');
+    await new Promise(r => setTimeout(r, 400));
+  }
+  log('success', 'All scenarios queued — check dashboard for alerts', 'BULK');
+}
+
+async function clearAlerts() {
+  log('warn', 'Clearing all open alerts via API...', 'BULK');
+  try {
+    const r = await apiFetch('GET', '/anomalies?status_filter=open&limit=100');
+    if (r.ok) {
+      const ids = (r.data.anomalies||[]).map(a => a.id);
+      log('data', `Found <span class="val">${ids.length}</span> open alerts`, 'BULK');
+      for (const id of ids) {
+        await apiFetch('POST', `/anomalies/${id}/status`, {status:'closed', assigned_to:'testlab'});
+      }
+      log('success', `Cleared <span class="ok">${ids.length}</span> alerts`, 'BULK');
+      await refreshStats();
+    }
+  } catch(e) { log('error', e.message, 'BULK'); }
+}
+
+async function runEndpoint(btn, method, path, body, respId, statusId, timeId) {
+  btn.classList.add('loading');
+  btn.textContent = '⏳ Sending...';
+  log('send', `${method} ${apiBase()}/api/v1${path}`, 'API');
+
+  try {
+    const r = await apiFetch(method, path, body);
+    setStatusTag(statusId, r.status, r.ms);
+    showResponse(respId, r.data);
+    const t = r.ok ? 'recv' : 'error';
+    log(t, `HTTP <span class="val">${r.status}</span> in <span class="val">${r.ms}ms</span>`, 'API');
+  } catch(e) {
+    document.getElementById(statusId).className = 'status-tag st-err';
+    document.getElementById(statusId).textContent = 'ERR';
+    log('error', e.message, 'API');
+  } finally {
+    btn.classList.remove('loading');
+    btn.textContent = '▶ Send';
+  }
+}
+
+async function runLogin() {
+  const user = document.getElementById('login-user').value;
+  const pass = document.getElementById('login-pass').value;
+  log('send', `POST /api/v1/auth/login — user:<span class="val">${user}</span>`, 'AUTH');
+  try {
+    const r = await apiFetch('POST', '/auth/login', {username:user, password:pass});
+    setStatusTag('login-status', r.status, r.ms);
+    showResponse('login-resp', r.data);
+    if (r.ok) {
+      token = r.data.access_token;
+      currentUser = r.data.user;
+      localStorage.setItem('netdna_token', token);
+      log('success', `Logged in as <span class="hi">${r.data.user.username}</span> [<span style="color:#A78BFA">${r.data.user.role}</span>]`, 'AUTH');
+      document.getElementById('sb-token').textContent = `${r.data.user.username} (${r.data.user.role})`;
+    } else {
+      log('error', r.data.detail || 'Login failed', 'AUTH');
+    }
+  } catch(e) { log('error', e.message, 'AUTH'); }
+}
+
+async function runAnomalies() {
+  const status = document.getElementById('anom-status').value;
+  const sev    = document.getElementById('anom-sev').value;
+  const limit  = document.getElementById('anom-limit').value;
+  let path = `/anomalies?status_filter=${status}&limit=${limit}`;
+  if (sev) path += `&severity=${sev}`;
+  await runEndpoint(
+    document.querySelector('#tab-api .run-btn:nth-of-type(4)'),
+    'GET', path, null, 'anom-resp', 'anom-status-tag', 'anom-time'
+  );
+}
+
+async function runQuarantine() {
+  const ip     = document.getElementById('q-ip').value;
+  const reason = document.getElementById('q-reason').value;
+  log('warn', `Quarantine requested for <span class="val">${ip}</span> — reason: ${reason}`, 'ISE');
+  await runEndpoint(
+    document.querySelector('#tab-quarantine .run-btn') || {classList:{add:()=>{},remove:()=>{}},textContent:''},
+    'POST', '/quarantine', {ip, reason}, 'q-resp', 'q-status', 'q-time'
+  );
+}
+
+const ROLE_PERMS = {
+  admin:   ['view_dashboard','view_alerts','view_entities','view_flows','view_topology','update_alerts','manage_users','quarantine','view_api_docs'],
+  analyst: ['view_dashboard','view_alerts','view_entities','view_flows','view_topology','update_alerts','view_api_docs'],
+  viewer:  ['view_dashboard','view_alerts','view_entities','view_flows','view_topology'],
+};
+
+async function selectRole(card, role, username, password) {
+  document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+
+  log('info', `Testing role: <span class="hi">${role}</span> (${username})`, 'ROLES');
+
+  const r = await apiFetch('POST', '/auth/login', {username, password});
+  const testToken = r.ok ? r.data.access_token : null;
+  const perms = ROLE_PERMS[role] || [];
+
+  document.getElementById('selectedRoleName').textContent = `${role.toUpperCase()} — ${username}`;
+  document.getElementById('selectedRoleName').style.color = card.style.getPropertyValue('--col') || 'var(--blue)';
+
+  if (!testToken) {
+    log('error', `Could not log in as ${username}`, 'ROLES');
+    return;
+  }
+
+  log('success', `Logged in as ${username} — testing ${perms.length} permissions`, 'ROLES');
+
+  const tests = [
+    {perm:'view_dashboard',  label:'View Dashboard',  method:'GET', path:'/dashboard'},
+    {perm:'view_alerts',     label:'View Alerts',     method:'GET', path:'/anomalies'},
+    {perm:'view_entities',   label:'View Entities',   method:'GET', path:'/entities'},
+    {perm:'view_flows',      label:'View Flows',      method:'GET', path:'/flows/stats'},
+    {perm:'update_alerts',   label:'Update Alerts',   method:'POST',path:'/anomalies/1/status'},
+    {perm:'manage_users',    label:'Manage Users',    method:'GET', path:'/users'},
+    {perm:'quarantine',      label:'Quarantine',      method:'POST',path:'/quarantine'},
+    {perm:'view_api_docs',   label:'API Docs',        method:'GET', path:'/dashboard'},
+  ];
+
+  const savedToken = token;
+  token = testToken;
+
+  const results = await Promise.all(tests.map(async t => {
+    try {
+      const resp = await apiFetch(t.method, t.path, t.method==='POST'?{ip:'10.0.0.1',status:'closed'}:null);
+      const allowed = resp.status !== 403;
+      const expected = perms.includes(t.perm);
+      const correct  = allowed === expected;
+      log(correct?'success':'warn',
+        `${t.label}: <span class="${allowed?'ok':'err'}">${resp.status}</span> ${correct?'✓':'⚠ unexpected'}`,
+        'ROLES');
+      return {label:t.label, allowed, expected, correct};
+    } catch(e) {
+      return {label:t.label, allowed:false, expected:perms.includes(t.perm), correct:false};
+    }
+  }));
+
+  token = savedToken;
+
+  document.getElementById('permGrid').innerHTML = results.map(r => `
+    <div class="perm-item">
+      <span class="perm-name">${r.label}</span>
+      <span class="perm-tick ${r.allowed?'y':'n'}">${r.allowed?'✓ ALLOW':'✕ DENY'}</span>
+    </div>
+  `).join('');
+}
+
+async function testAuth() {
+  log('info', 'Testing all three auth roles...', 'AUTH');
+  for (const [role, creds] of [['admin','netdna2024'],['analyst','analyst123'],['viewer','viewer123']]) {
+    const r = await apiFetch('POST', '/auth/login', {username:role==='admin'?'admin':role+'1', password:creds});
+    if (r.ok) {
+      log('success', `${(role==='admin'?'admin':role+'1').padEnd(9)} → <span class="ok">OK</span> — ${(r.data.user?.permissions||[]).length} permissions`, 'AUTH');
+    } else {
+      log('error', `${role} → <span class="err">FAILED</span> — ${r.data.detail}`, 'AUTH');
+    }
+    await new Promise(r => setTimeout(r, 200));
+  }
+}
+
+async function testConnector(type) {
+  log('info', `Testing ${type} connector...`, 'CONNECTOR');
+  const r = await apiFetch('GET', '/health');
+  if (r.ok) {
+    log('success', `${type} — mode: <span class="val">${r.data.mode}</span> — <span class="ok">operational</span>`, 'CONNECTOR');
+  } else {
+    log('error', `${type} health check failed`, 'CONNECTOR');
+  }
+  await refreshStats();
+}
+
+function toggleCard(header) {
+  const body = header.nextElementSibling;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+}
+
+function switchTab(btn, tabId) {
+  document.querySelectorAll('.snav-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tabId).classList.add('active');
+}
+
+const cmdHistory = [];
+let histIdx = -1;
+
+function handleTermInput(e) {
+  const input = document.getElementById('termInput');
+  if (e.key === 'Enter') {
+    const cmd = input.value.trim();
+    if (!cmd) return;
+    cmdHistory.unshift(cmd); histIdx = -1;
+    input.value = '';
+    handleCommand(cmd);
+  } else if (e.key === 'ArrowUp') {
+    histIdx = Math.min(histIdx+1, cmdHistory.length-1);
+    input.value = cmdHistory[histIdx] || '';
+  } else if (e.key === 'ArrowDown') {
+    histIdx = Math.max(histIdx-1, -1);
+    input.value = histIdx>=0 ? cmdHistory[histIdx] : '';
+  }
+}
+
+async function handleCommand(cmd) {
+  log('data', `<span style="color:#049FD9">$</span> ${cmd}`);
+  const parts = cmd.split(' ');
+  const verb  = parts[0].toLowerCase();
+
+  if (verb === 'help') {
+    log('info', 'Commands: <span class="hi">health · login · anomalies · entities · flows · fire [type] · clear · status</span>');
+  } else if (verb === 'health') {
+    const r = await apiFetch('GET', '/health');
+    log(r.ok?'success':'error', JSON.stringify(r.data), 'API');
+  } else if (verb === 'status') {
+    await refreshStats();
+    log('success', 'Stats refreshed');
+  } else if (verb === 'anomalies') {
+    const r = await apiFetch('GET', '/anomalies?limit=5');
+    if (r.ok) r.data.anomalies.forEach(a =>
+      log('data', `<span class="val">#${a.id}</span> [${a.severity}] ${a.description.slice(0,60)}...`)
+    );
+  } else if (verb === 'entities') {
+    const r = await apiFetch('GET', '/entities?limit=5');
+    if (r.ok) r.data.entities.forEach(e =>
+      log('data', `<span class="hi">${e.username||e.ip_address}</span> — risk:<span class="val">${e.risk_score}</span> vlan:${e.vlan_id}`)
+    );
+  } else if (verb === 'fire' && parts[1]) {
+    const type = parts[1];
+    if (SCENARIOS[type]) {
+      await fireScenario(type, {classList:{add:()=>{},remove:()=>{}},innerHTML:'',textContent:''});
+    } else {
+      log('error', `Unknown scenario: ${type}. Options: ${Object.keys(SCENARIOS).join(', ')}`);
+    }
+  } else if (verb === 'login') {
+    const user = parts[1] || 'admin';
+    const pass = parts[2] || 'netdna2024';
+    const r = await apiFetch('POST', '/auth/login', {username:user, password:pass});
+    if (r.ok) { token = r.data.access_token; log('success', `Logged in as ${r.data.user.username}`); }
+    else log('error', r.data.detail||'Login failed');
+  } else if (verb === 'clear') {
+    clearLog(); return;
+  } else if (verb.startsWith('/')) {
+    const r = await apiFetch('GET', verb);
+    log(r.ok?'recv':'error', JSON.stringify(r.data).slice(0,200), 'API');
+  } else {
+    log('warn', `Unknown command: <span class="val">${verb}</span> — type <span class="hi">help</span> for commands`);
+  }
+}
+
+document.getElementById('apiBase').addEventListener('change', () => {
+  checkConnection();
+});
+
+log('info', 'NetDNA Test Lab initialised');
+log('info', 'Connecting to API...');
+checkConnection();
+setInterval(refreshStats, 10000);
+</script>
+</body>
+</html>

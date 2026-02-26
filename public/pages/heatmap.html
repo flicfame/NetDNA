@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — Threat Heatmap</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/shared.css">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --hm-bg:     #F5F7FA;
+  --hm-card:   #FFFFFF;
+  --hm-border: #E0E4EA;
+  --hm-text:   #1D1D1D;
+  --hm-dim:    #9E9EA2;
+  --hm-mid:    #58585B;
+  --hm-blue:   #049FD9;
+  --hm-dk:     #004BAF;
+  --hm-lt:     rgba(4,159,217,.08);
+  --hm-green:  #00853E;
+  --hm-red:    #E2231A;
+  --hm-orange: #F7810A;
+  --hm-yellow: #D4A017;
+  --hm-purple: #6B5FCF;
+  --bar:       30px;
+}
+
+body{overflow:hidden}
+
+.hm-toolbar{
+  position:fixed;top:53px;left:0;right:0;height:39px;
+  background:var(--hm-card);
+  border-bottom:1px solid var(--hm-border);
+  display:flex;align-items:center;gap:10px;
+  padding:0 18px;z-index:190;
+}
+
+.view-tabs{display:flex;gap:2px;background:var(--hm-bg);border:1px solid var(--hm-border);border-radius:6px;padding:3px}
+.vt{font-size:10px;font-weight:600;padding:5px 12px;border-radius:4px;border:none;background:none;color:var(--hm-mid);cursor:pointer;transition:all .15s;white-space:nowrap}
+.vt:hover{color:var(--hm-text)}
+.vt.on{background:var(--hm-lt);border:1px solid rgba(4,159,217,.2);color:var(--hm-blue)}
+
+.time-range{display:flex;gap:2px;background:var(--hm-bg);border:1px solid var(--hm-border);border-radius:6px;padding:3px;flex-shrink:0}
+.tr-btn{font-size:10px;font-weight:600;padding:4px 9px;border-radius:3px;border:none;background:none;color:var(--hm-mid);cursor:pointer;transition:all .15s}
+.tr-btn:hover{color:var(--hm-text)}
+.tr-btn.on{background:var(--hm-dk);color:#fff}
+
+.legend-bar{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto}
+.lb-label{font-size:9px;font-weight:600;color:var(--hm-dim);text-transform:uppercase;letter-spacing:.6px}
+.lb-scale{display:flex;align-items:center;gap:3px}
+.lb-step{width:22px;height:10px;border-radius:2px}
+.lb-val{font-size:9px;color:var(--hm-dim);font-weight:600}
+
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--hm-green);box-shadow:0 0 6px var(--hm-green);animation:pulse 1.5s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.live-txt{font-size:10px;font-weight:600;color:var(--hm-green);text-transform:uppercase;letter-spacing:.5px}
+
+.main{
+  position:fixed;top:92px;bottom:var(--bar);
+  left:0;right:0;
+  display:grid;
+  grid-template-columns:1fr 320px;
+  grid-template-rows:1fr 220px;
+  gap:1px;
+  background:var(--hm-border);
+  overflow:hidden;
+}
+.pane{background:var(--hm-card);overflow:hidden;position:relative}
+.pane.full{grid-column:1;grid-row:1/3}
+.pane.right-top{grid-column:2;grid-row:1}
+.pane.right-bot{grid-column:2;grid-row:2}
+.pane.bottom{grid-column:1;grid-row:2}
+
+.ph{
+  display:flex;align-items:center;gap:10px;
+  padding:13px 16px 11px;
+  border-bottom:1px solid var(--hm-border);
+  flex-shrink:0;
+}
+.ph-title{font-size:13px;font-weight:700;color:var(--hm-text);letter-spacing:.1px}
+.ph-sub{font-size:10px;color:var(--hm-dim);margin-left:auto;font-weight:500}
+.ph-badge{font-size:9px;font-weight:600;padding:2px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:.3px}
+.phb-blue{background:var(--hm-lt);color:var(--hm-blue);border:1px solid rgba(4,159,217,.2)}
+.phb-red{background:rgba(226,35,26,.06);color:var(--hm-red);border:1px solid rgba(226,35,26,.2)}
+.phb-orange{background:rgba(247,129,10,.06);color:var(--hm-orange);border:1px solid rgba(247,129,10,.2)}
+
+.heatmap-wrap{
+  padding:16px;
+  height:calc(100% - 48px);
+  overflow-y:auto;
+  display:flex;flex-direction:column;gap:18px;
+}
+.heatmap-wrap::-webkit-scrollbar{width:3px}
+.heatmap-wrap::-webkit-scrollbar-thumb{background:#C6C7CA;border-radius:2px}
+
+.hm-section-label{
+  font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1px;color:var(--hm-blue);
+  margin-bottom:6px;
+  display:flex;align-items:center;gap:8px;
+}
+.hm-section-label::after{content:'';flex:1;height:1px;background:rgba(4,159,217,.15)}
+
+.entity-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(110px,1fr));
+  gap:5px;
+}
+.eg-cell{
+  padding:10px 10px 8px;
+  border-radius:6px;
+  border:1px solid var(--hm-border);
+  background:var(--hm-card);
+  cursor:pointer;
+  transition:all .2s;
+  position:relative;
+  overflow:hidden;
+}
+.eg-cell:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+
+.eg-icon{font-size:14px;margin-bottom:5px;display:block}
+.eg-name{font-size:11px;font-weight:700;color:var(--hm-text);line-height:1.2;margin-bottom:2px;word-break:break-word}
+.eg-ip{font-size:9px;color:var(--hm-dim);margin-bottom:5px;font-weight:500}
+.eg-score-row{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
+.eg-score{font-size:20px;font-weight:800;line-height:1;letter-spacing:-1px}
+.eg-bar{height:3px;border-radius:2px;background:var(--hm-bg);margin-top:5px;overflow:hidden}
+.eg-fill{height:100%;border-radius:2px;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
+.eg-trend{font-size:9px;font-weight:600}
+
+.risk-none {--rc:rgba(4,159,217,.04);--rb:rgba(4,159,217,.15);--rt:rgba(4,159,217,.6)}
+.risk-low  {--rc:rgba(4,159,217,.06);--rb:rgba(4,159,217,.2);--rt:var(--hm-blue)}
+.risk-med  {--rc:rgba(212,160,23,.06);--rb:rgba(212,160,23,.2);--rt:var(--hm-yellow)}
+.risk-high {--rc:rgba(247,129,10,.06);--rb:rgba(247,129,10,.2);--rt:var(--hm-orange)}
+.risk-crit {--rc:rgba(226,35,26,.06);--rb:rgba(226,35,26,.2);--rt:var(--hm-red)}
+
+.eg-cell.risk-none  {background:var(--hm-card);border-color:var(--rb)}
+.eg-cell.risk-low   {background:rgba(4,159,217,.02);border-color:var(--rb)}
+.eg-cell.risk-med   {background:rgba(212,160,23,.02);border-color:var(--rb)}
+.eg-cell.risk-high  {background:rgba(247,129,10,.03);border-color:var(--rb)}
+.eg-cell.risk-crit  {background:rgba(226,35,26,.03);border-color:var(--rb)}
+
+.eg-score{color:var(--rt)}
+.eg-fill {background:var(--rt)}
+.eg-trend{color:var(--rt)}
+
+.time-hm-wrap{
+  padding:12px 16px;
+  height:calc(100% - 48px);
+  overflow:hidden;
+  display:flex;flex-direction:column;gap:10px;
+}
+.time-axis{display:flex;align-items:center;gap:0;padding-left:52px}
+.ta-hour{
+  flex:1;text-align:center;
+  font-size:9px;color:var(--hm-dim);font-weight:500;
+}
+.time-rows{display:flex;flex-direction:column;gap:3px;flex:1}
+.tr-row{display:flex;align-items:center;gap:3px}
+.tr-label{
+  width:48px;font-size:9px;color:var(--hm-mid);font-weight:600;
+  text-align:right;padding-right:6px;flex-shrink:0;
+}
+.tr-cells{display:flex;gap:2px;flex:1}
+.tc{
+  flex:1;border-radius:2px;cursor:pointer;
+  transition:transform .1s,filter .1s;
+  position:relative;min-width:0;
+}
+.tc:hover{transform:scale(1.2);filter:brightness(1.1);z-index:10}
+
+.matrix-wrap{
+  padding:12px 14px;
+  height:calc(100% - 48px);
+  overflow:auto;
+}
+.matrix-wrap::-webkit-scrollbar{width:3px;height:3px}
+.matrix-wrap::-webkit-scrollbar-thumb{background:#C6C7CA}
+
+.matrix-table{border-collapse:separate;border-spacing:3px;width:100%}
+.mt-head{
+  font-size:9px;font-weight:600;color:var(--hm-dim);
+  text-transform:uppercase;letter-spacing:.3px;
+  padding:2px 0;white-space:nowrap;
+  writing-mode:vertical-rl;text-orientation:mixed;
+  transform:rotate(180deg);
+  height:58px;vertical-align:bottom;
+}
+.mt-label{
+  font-size:9px;font-weight:600;color:var(--hm-mid);
+  white-space:nowrap;padding:2px 4px 2px 0;
+  text-align:right;vertical-align:middle;
+}
+.mt-cell{
+  width:22px;height:22px;border-radius:3px;cursor:pointer;
+  position:relative;transition:transform .1s,filter .1s;
+}
+.mt-cell:hover{transform:scale(1.3);filter:brightness(1.1);z-index:10}
+.mt-self{background:var(--hm-bg);opacity:.3}
+
+.proto-wrap{
+  padding:12px 14px;
+  height:calc(100% - 48px);
+  display:flex;flex-direction:column;gap:7px;
+  overflow-y:auto;
+}
+.proto-wrap::-webkit-scrollbar{width:3px}
+.proto-wrap::-webkit-scrollbar-thumb{background:#C6C7CA}
+.proto-row{display:flex;align-items:center;gap:8px}
+.proto-name{
+  font-size:10px;font-weight:600;color:var(--hm-text);
+  width:76px;flex-shrink:0;
+}
+.proto-track{flex:1;height:16px;background:var(--hm-bg);border-radius:3px;overflow:hidden;position:relative;cursor:pointer}
+.proto-fill{height:100%;border-radius:3px;transition:width 1.5s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;padding-left:6px}
+.proto-pct{font-size:9px;font-weight:700;color:#fff;white-space:nowrap}
+.proto-count{font-size:9px;font-weight:500;color:var(--hm-dim);width:58px;text-align:right;flex-shrink:0}
+.proto-badge{font-size:8px;font-weight:600;padding:2px 6px;border-radius:3px;flex-shrink:0}
+
+.tt{
+  position:fixed;pointer-events:none;
+  background:var(--hm-card);border:1px solid var(--hm-border);
+  border-radius:6px;padding:10px 13px;
+  font-size:11px;
+  z-index:500;opacity:0;transition:opacity .12s;
+  box-shadow:0 4px 16px rgba(0,0,0,.1);
+  min-width:160px;max-width:240px;
+}
+.tt.show{opacity:1}
+.tt-title{font-size:13px;font-weight:700;color:var(--hm-text);margin-bottom:5px}
+.tt-row{display:flex;justify-content:space-between;gap:12px;padding:2px 0;font-size:11px}
+.tt-k{color:var(--hm-mid)}
+.tt-v{font-size:10px;font-weight:600;text-align:right;color:var(--hm-text)}
+.tt-div{border:none;border-top:1px solid var(--hm-border);margin:5px 0}
+
+.hm-statusbar{
+  position:fixed;bottom:0;left:0;right:0;height:var(--bar);
+  background:var(--hm-dk);border-top:1px solid rgba(255,255,255,.1);
+  display:flex;align-items:center;padding:0 18px;gap:18px;z-index:200;
+}
+.si{display:flex;align-items:center;gap:5px;font-size:10px;color:rgba(255,255,255,.6);white-space:nowrap}
+.si b{color:#fff;font-weight:600;margin-left:3px}
+.sid{width:5px;height:5px;border-radius:50%}
+.sb-right{margin-left:auto;font-size:10px;color:rgba(255,255,255,.5)}
+
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.eg-cell{animation:fadeSlideUp .4s ease both}
+
+#trafficView{display:none;position:fixed;top:92px;bottom:var(--bar);left:0;right:0;background:var(--hm-bg);overflow-y:auto;padding:16px 20px 24px}
+#trafficView::-webkit-scrollbar{width:4px}
+#trafficView::-webkit-scrollbar-thumb{background:#C6C7CA;border-radius:2px}
+
+.tf-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.tf-stat{background:var(--hm-card);border:1px solid var(--hm-border);border-radius:8px;padding:14px 16px;position:relative;overflow:hidden}
+.tf-stat-label{font-size:10px;font-weight:600;color:var(--hm-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.tf-stat-val{font-size:26px;font-weight:800;color:var(--hm-text);letter-spacing:-1px;line-height:1}
+.tf-stat-sub{font-size:10px;color:var(--hm-mid);margin-top:4px;font-weight:500}
+.tf-stat-accent{position:absolute;top:0;left:0;width:4px;height:100%;border-radius:8px 0 0 8px}
+
+.tf-section{margin-bottom:20px}
+.tf-section-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.tf-section-title{font-size:13px;font-weight:700;color:var(--hm-text)}
+.tf-section-title::after{content:'';flex:1;height:1px;background:var(--hm-border);margin-left:8px;display:inline-block}
+.tf-section-badge{font-size:9px;font-weight:600;padding:2px 8px;border-radius:3px;background:var(--hm-lt);color:var(--hm-blue);border:1px solid rgba(4,159,217,.2)}
+
+.tf-columns{display:grid;grid-template-columns:1fr 360px;gap:16px}
+
+.tf-flow-tbl{width:100%;border-collapse:separate;border-spacing:0;background:var(--hm-card);border:1px solid var(--hm-border);border-radius:8px;overflow:hidden}
+.tf-flow-tbl th{font-size:10px;font-weight:600;color:var(--hm-dim);text-transform:uppercase;letter-spacing:.4px;padding:10px 12px;text-align:left;background:var(--hm-bg);border-bottom:1px solid var(--hm-border)}
+.tf-flow-tbl td{font-size:11px;padding:9px 12px;border-bottom:1px solid rgba(0,0,0,.04);color:var(--hm-text);font-weight:500}
+.tf-flow-tbl tr:last-child td{border-bottom:none}
+.tf-flow-tbl tbody tr{cursor:pointer;transition:background .15s}
+.tf-flow-tbl tbody tr:hover{background:rgba(4,159,217,.04)}
+.tf-seg{font-weight:600;font-size:10px}
+.tf-arrow{color:var(--hm-dim);font-size:10px;padding:0 2px}
+.tf-vol-bar{height:6px;border-radius:3px;background:var(--hm-bg);overflow:hidden;min-width:80px}
+.tf-vol-fill{height:100%;border-radius:3px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.tf-flag{font-size:8px;font-weight:600;padding:2px 6px;border-radius:3px}
+.tf-flag-cross{background:rgba(247,129,10,.08);color:var(--hm-orange);border:1px solid rgba(247,129,10,.2)}
+.tf-flag-exfil{background:rgba(226,35,26,.08);color:var(--hm-red);border:1px solid rgba(226,35,26,.2)}
+.tf-flag-normal{background:var(--hm-lt);color:var(--hm-blue);border:1px solid rgba(4,159,217,.2)}
+
+.tf-talkers{display:grid;grid-template-columns:1fr;gap:6px}
+.tf-talker{display:flex;align-items:center;gap:10px;background:var(--hm-card);border:1px solid var(--hm-border);border-radius:6px;padding:10px 12px;cursor:pointer;transition:all .15s}
+.tf-talker:hover{border-color:rgba(4,159,217,.3);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.tf-talker-icon{font-size:16px;flex-shrink:0}
+.tf-talker-info{flex:1;min-width:0}
+.tf-talker-name{font-size:11px;font-weight:700;color:var(--hm-text);line-height:1.2}
+.tf-talker-ip{font-size:9px;color:var(--hm-dim);font-weight:500}
+.tf-talker-proto{font-size:9px;color:var(--hm-mid);font-weight:500;margin-top:1px}
+.tf-talker-flows{font-size:12px;font-weight:700;color:var(--hm-blue);flex-shrink:0;text-align:right}
+.tf-talker-flows small{font-size:9px;color:var(--hm-dim);font-weight:500;display:block}
+.tf-talker-risk{width:6px;height:32px;border-radius:3px;flex-shrink:0}
+
+.tf-proto-section{margin-top:18px}
+.tf-proto-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.tf-proto-card{background:var(--hm-card);border:1px solid var(--hm-border);border-radius:6px;padding:10px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .15s}
+.tf-proto-card:hover{border-color:rgba(4,159,217,.3);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.tf-proto-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.tf-proto-info{flex:1;min-width:0}
+.tf-proto-name{font-size:11px;font-weight:700;color:var(--hm-text)}
+.tf-proto-flows{font-size:10px;color:var(--hm-mid);font-weight:500}
+.tf-proto-bar-wrap{width:60px;height:4px;border-radius:2px;background:var(--hm-bg);overflow:hidden;flex-shrink:0}
+.tf-proto-bar-fill{height:100%;border-radius:2px}
+.tf-proto-pct{font-size:11px;font-weight:700;color:var(--hm-text);width:32px;text-align:right;flex-shrink:0}
+
+#entityView{display:none;position:fixed;top:92px;bottom:var(--bar);left:0;right:0;background:var(--hm-bg);overflow-y:auto;padding:16px 20px 24px}
+#entityView::-webkit-scrollbar{width:4px}
+#entityView::-webkit-scrollbar-thumb{background:#C6C7CA;border-radius:2px}
+
+.em-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.em-stat{background:var(--hm-card);border:1px solid var(--hm-border);border-radius:8px;padding:12px 16px;position:relative;overflow:hidden}
+.em-stat-accent{position:absolute;top:0;left:0;width:4px;height:100%;border-radius:8px 0 0 8px}
+.em-stat-label{font-size:10px;font-weight:600;color:var(--hm-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.em-stat-val{font-size:24px;font-weight:800;color:var(--hm-text);letter-spacing:-1px;line-height:1}
+.em-stat-sub{font-size:10px;color:var(--hm-mid);margin-top:3px;font-weight:500}
+
+.em-filters{display:flex;align-items:center;gap:6px;margin-bottom:12px}
+.em-filter{font-size:10px;font-weight:600;padding:5px 14px;border-radius:5px;border:1px solid var(--hm-border);background:var(--hm-card);color:var(--hm-mid);cursor:pointer;transition:all .15s}
+.em-filter:hover{border-color:rgba(4,159,217,.3);color:var(--hm-text)}
+.em-filter.on{background:var(--hm-lt);border-color:rgba(4,159,217,.3);color:var(--hm-blue)}
+.em-filter-count{font-size:9px;font-weight:700;background:var(--hm-bg);padding:1px 5px;border-radius:3px;margin-left:4px}
+
+.em-tbl-wrap{background:var(--hm-card);border:1px solid var(--hm-border);border-radius:8px;overflow:hidden;margin-bottom:18px}
+.em-tbl{width:100%;border-collapse:separate;border-spacing:0}
+.em-tbl th{font-size:10px;font-weight:600;color:var(--hm-dim);text-transform:uppercase;letter-spacing:.4px;padding:10px 10px;text-align:left;background:var(--hm-bg);border-bottom:1px solid var(--hm-border);cursor:pointer;user-select:none;white-space:nowrap;transition:color .15s}
+.em-tbl th:hover{color:var(--hm-blue)}
+.em-tbl th.sorted{color:var(--hm-blue)}
+.em-sort{font-size:8px;margin-left:3px;opacity:.5}
+.em-tbl th.sorted .em-sort{opacity:1}
+.em-tbl td{font-size:11px;padding:8px 10px;border-bottom:1px solid rgba(0,0,0,.04);color:var(--hm-text);font-weight:500;vertical-align:middle}
+.em-tbl tbody tr:last-child td{border-bottom:none}
+.em-tbl tbody tr{cursor:pointer;transition:background .15s}
+.em-tbl tbody tr:hover{background:rgba(4,159,217,.04)}
+.em-status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.em-name-cell{display:flex;align-items:center;gap:6px}
+.em-icon{font-size:14px}
+.em-name{font-weight:700;font-size:11px}
+.em-risk-cell{display:flex;align-items:center;gap:6px}
+.em-risk-val{font-weight:800;font-size:13px;min-width:24px}
+.em-risk-bar{width:48px;height:5px;border-radius:3px;background:var(--hm-bg);overflow:hidden}
+.em-risk-fill{height:100%;border-radius:3px}
+.em-trend{font-size:10px;font-weight:600}
+.em-alert-badge{font-size:9px;font-weight:600;padding:2px 7px;border-radius:3px}
+.em-last-alert{font-size:10px;color:var(--hm-mid);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.em-type-badge{font-size:9px;font-weight:600;padding:2px 7px;border-radius:3px;background:var(--hm-bg);color:var(--hm-mid);border:1px solid var(--hm-border)}
+
+.em-adj-section{margin-top:4px}
+.em-adj-title{font-size:13px;font-weight:700;color:var(--hm-text);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.em-adj-title::after{content:'';flex:1;height:1px;background:var(--hm-border)}
+.em-adj-wrap{background:var(--hm-card);border:1px solid var(--hm-border);border-radius:8px;padding:14px;overflow-x:auto}
+.em-adj-tbl{border-collapse:separate;border-spacing:2px}
+.em-adj-head{font-size:7px;font-weight:600;color:var(--hm-dim);writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);height:60px;vertical-align:bottom;padding:2px;white-space:nowrap;max-width:18px;overflow:hidden}
+.em-adj-label{font-size:8px;font-weight:600;color:var(--hm-mid);white-space:nowrap;padding:2px 4px 2px 0;text-align:right;vertical-align:middle;max-width:90px;overflow:hidden;text-overflow:ellipsis}
+.em-adj-cell{width:16px;height:16px;border-radius:2px;cursor:pointer;transition:transform .1s}
+.em-adj-cell:hover{transform:scale(1.4);z-index:10;position:relative}
+.em-adj-self{background:var(--hm-bg);opacity:.3}
+</style>
+</head>
+<body>
+
+<div id="navMount"></div>
+
+<div class="hm-toolbar">
+  <div class="view-tabs">
+    <button class="vt on" onclick="switchView('risk',this)" data-testid="button-view-risk">Risk Grid</button>
+    <button class="vt" onclick="switchView('traffic',this)" data-testid="button-view-traffic">Traffic Flow</button>
+    <button class="vt" onclick="switchView('entity',this)" data-testid="button-view-entity">Entity Matrix</button>
+  </div>
+
+  <div style="width:1px;height:20px;background:var(--hm-border)"></div>
+
+  <div class="time-range">
+    <button class="tr-btn" onclick="setRange(this,'1h')" data-testid="button-range-1h">1H</button>
+    <button class="tr-btn on" onclick="setRange(this,'24h')" data-testid="button-range-24h">24H</button>
+    <button class="tr-btn" onclick="setRange(this,'7d')" data-testid="button-range-7d">7D</button>
+    <button class="tr-btn" onclick="setRange(this,'30d')" data-testid="button-range-30d">30D</button>
+  </div>
+
+  <div class="legend-bar">
+    <span class="lb-label">Risk</span>
+    <div class="lb-scale">
+      <span class="lb-val">0</span>
+      <div class="lb-step" style="background:rgba(4,159,217,.15)"></div>
+      <div class="lb-step" style="background:rgba(4,159,217,.45)"></div>
+      <div class="lb-step" style="background:rgba(212,160,23,.55)"></div>
+      <div class="lb-step" style="background:rgba(247,129,10,.7)"></div>
+      <div class="lb-step" style="background:rgba(226,35,26,.85)"></div>
+      <span class="lb-val">100</span>
+    </div>
+  </div>
+
+  <div style="width:1px;height:20px;background:var(--hm-border)"></div>
+  <div class="live-dot"></div>
+  <div class="live-txt">Live</div>
+  <div style="font-size:11px;font-weight:500;color:var(--hm-mid)" id="clock">—</div>
+</div>
+
+<div class="main" id="mainGrid">
+  <div class="pane full" id="paneMain">
+    <div class="ph">
+      <div class="ph-title">Entity Risk Heatmap</div>
+      <span class="ph-badge phb-red" id="critBadge">— Critical</span>
+      <span class="ph-badge phb-orange" style="margin-left:4px" id="warnBadge">— Warning</span>
+      <div class="ph-sub" id="mainSub">All devices · sorted by risk</div>
+    </div>
+    <div class="heatmap-wrap" id="heatmapWrap"></div>
+  </div>
+
+  <div class="pane bottom" id="paneTime">
+    <div class="ph">
+      <div class="ph-title">Anomaly Timeline Heatmap</div>
+      <span class="ph-badge phb-blue">24h × 7 day</span>
+      <div class="ph-sub">Hourly anomaly density</div>
+    </div>
+    <div class="time-hm-wrap" id="timeWrap"></div>
+  </div>
+
+  <div class="pane right-top" id="paneMatrix">
+    <div class="ph">
+      <div class="ph-title">Segment Matrix</div>
+      <div class="ph-sub">VLAN flow intensity</div>
+    </div>
+    <div class="matrix-wrap" id="matrixWrap"></div>
+  </div>
+
+  <div class="pane right-bot" id="paneProto">
+    <div class="ph">
+      <div class="ph-title">Protocol Activity</div>
+      <div class="ph-sub">Last 24h</div>
+    </div>
+    <div class="proto-wrap" id="protoWrap"></div>
+  </div>
+</div>
+
+<div class="hm-statusbar">
+  <div class="si"><div class="sid" style="background:#4cd690"></div>NetFlow<b>42.3 fps</b></div>
+  <div class="si"><div class="sid" style="background:#049FD9"></div>Entities<b id="sbEntities">—</b></div>
+  <div class="si"><div class="sid" style="background:#E2231A"></div>Critical<b id="sbCrit">—</b></div>
+  <div class="si"><div class="sid" style="background:#F7810A"></div>Warnings<b id="sbWarn">—</b></div>
+  <div class="si"><div class="sid" style="background:#049FD9"></div>ISE pxGrid<b>Connected</b></div>
+  <div class="si"><div class="sid" style="background:#049FD9"></div>OT SPAN<b>Active</b></div>
+  <div class="sb-right">NetDNA v0.1 · Cisco-Native Security Monitoring</div>
+</div>
+
+<div id="trafficView" data-testid="traffic-view"></div>
+<div id="entityView" data-testid="entity-view"></div>
+
+<div class="tt" id="tooltip"></div>
+
+<script src="/assets/js/app.js"></script>
+<script>
+if (!Auth.guard()) throw 0;
+document.getElementById('navMount').innerHTML = renderNav('Heatmap');
+document.head.insertAdjacentHTML('beforeend', `<style>${NAV_CSS}</style>`);
+
+const ENTITIES = [
+  { id:'kali',        name:'KALI-ATTACKER',  ip:'10.20.0.99',      icon:'☠',  type:'Endpoint',  group:'IT',  vlan:'VLAN-20',  risk:96, trend:'+14', alerts:3, user:'attacker',    status:'critical',
+    detail:{ Protocol:'SSH/SMB/Modbus', Flows:'4,102/hr', Anomalies:'3 active', LastAlert:'Port scan — T1046', Auth:'MAB (fallback)' } },
+  { id:'jharris',     name:'j.harris',       ip:'10.20.0.50',      icon:'💻', type:'Endpoint',  group:'IT',  vlan:'VLAN-20',  risk:91, trend:'+22', alerts:3, user:'j.harris',    status:'critical',
+    detail:{ Protocol:'SMB/HTTPS/Modbus', Flows:'1,847/hr', Anomalies:'3 active', LastAlert:'IT→OT crossing — T0866', Posture:'Non-Compliant' } },
+  { id:'plc-boiler',  name:'PLC-BOILER-01',  ip:'192.168.101.11',  icon:'⚙',  type:'PLC',       group:'OT',  vlan:'VLAN-101', risk:85, trend:'+18', alerts:2, status:'critical',
+    detail:{ Protocol:'Modbus/TCP', FunctionCodes:'FC6,FC15', Anomalies:'2 active', LastAlert:'47 coils forced — T0831', Temp:'168°C / 150°C limit' } },
+  { id:'plc-power',   name:'PLC-POWER-01',   ip:'192.168.101.13',  icon:'⚙',  type:'PLC',       group:'OT',  vlan:'VLAN-101', risk:92, trend:'+30', alerts:1, status:'critical',
+    detail:{ Protocol:'Modbus/TCP', Anomalies:'1 active', LastAlert:'Rogue HMI FC5 FORCE ON — T0855' } },
+  { id:'plc-water',   name:'PLC-WATER-01',   ip:'192.168.101.12',  icon:'⚙',  type:'PLC',       group:'OT',  vlan:'VLAN-101', risk:95, trend:'+41', alerts:1, status:'critical',
+    detail:{ Protocol:'Modbus/TCP', Anomalies:'1 active', LastAlert:'FW write — T0839', Firmware:'3.2.1-MODIFIED' } },
+  { id:'historian',   name:'HISTORIAN-01',   ip:'192.168.103.11',  icon:'🗄',  type:'Server',    group:'OT',  vlan:'VLAN-103', risk:78, trend:'+9',  alerts:1, status:'critical',
+    detail:{ Protocol:'OPC-UA', Anomalies:'1 active', LastAlert:'120MB exfil — T0882', DataLoss:'120 MB' } },
+  { id:'eng-ws',      name:'ENG-WS-01',      ip:'192.168.102.21',  icon:'💻', type:'Endpoint',  group:'OT',  vlan:'VLAN-102', risk:62, trend:'+5',  alerts:1, status:'warn',
+    detail:{ Protocol:'EtherNet/IP', Anomalies:'1 active', LastAlert:'OT subnet scan — T0846' } },
+  { id:'rtu',         name:'RTU-SUBST-01',   ip:'192.168.101.21',  icon:'📡', type:'RTU',       group:'OT',  vlan:'VLAN-101', risk:55, trend:'+2',  alerts:1, status:'warn',
+    detail:{ Protocol:'DNP3', Anomalies:'1 active', LastAlert:'DNP3 flood — T0815' } },
+  { id:'sw-acc-fin',  name:'SW-ACC-FIN',     ip:'10.20.0.1',       icon:'◫',  type:'Switch',    group:'IT',  vlan:'VLAN-20',  risk:48, trend:'+6',  alerts:1, status:'warn',
+    detail:{ NetFlow:'82.4 fps', Anomalies:'1 active', LastAlert:'Lateral movement detected' } },
+  { id:'sw-ot',       name:'SW-OT-CORE',     ip:'192.168.101.1',   icon:'◫',  type:'Switch',    group:'OT',  vlan:'OT Core',  risk:45, trend:'+4',  alerts:1, status:'warn',
+    detail:{ NetFlow:'31.2 fps', Anomalies:'1 active', LastAlert:'IT→OT boundary violation' } },
+  { id:'hmi',         name:'HMI-SCADA',      ip:'192.168.102.11',  icon:'🖥', type:'SCADA',     group:'OT',  vlan:'VLAN-102', risk:32, trend:'0',   alerts:0, status:'online',
+    detail:{ Protocol:'OPC-DA/Modbus', Flows:'124/hr', Anomalies:'0' } },
+  { id:'fw-edge',     name:'FW-EDGE-01',     ip:'10.0.0.1',        icon:'◈',  type:'Firewall',  group:'Net', vlan:'Edge',     risk:28, trend:'+1',  alerts:0, status:'online',
+    detail:{ Protocol:'AnyConnect/ASA', Sessions:'12 VPN active', Anomalies:'0' } },
+  { id:'ise',         name:'ISE-01',         ip:'10.100.0.20',     icon:'🔐', type:'Server',    group:'IT',  vlan:'MGMT-100', risk:12, trend:'0',   alerts:0, status:'online',
+    detail:{ Sessions:'47 active', pxGrid:'Connected', Anomalies:'0' } },
+  { id:'sw-core-01',  name:'SW-CORE-01',     ip:'10.100.0.1',      icon:'◫',  type:'Switch',    group:'IT',  vlan:'Core',     risk:18, trend:'+1',  alerts:0, status:'online',
+    detail:{ NetFlow:'42.3 fps', Anomalies:'0' } },
+  { id:'sw-core-02',  name:'SW-CORE-02',     ip:'10.100.0.2',      icon:'◫',  type:'Switch',    group:'IT',  vlan:'Core',     risk:14, trend:'0',   alerts:0, status:'online',
+    detail:{ NetFlow:'18.7 fps', Anomalies:'0' } },
+  { id:'win-dc',      name:'WIN-DC-01',      ip:'10.100.0.10',     icon:'🏢', type:'Server',    group:'IT',  vlan:'MGMT-100', risk:22, trend:'+3',  alerts:0, status:'online',
+    detail:{ Role:'AD/DNS', Protocol:'Kerberos/LDAP', Anomalies:'0' } },
+  { id:'asmith',      name:'a.smith',        ip:'10.10.0.50',      icon:'💻', type:'Endpoint',  group:'IT',  vlan:'VLAN-10',  risk:18, trend:'0',   alerts:0, user:'a.smith',   status:'online',
+    detail:{ Auth:'802.1X EAP-TLS', Posture:'Compliant', Anomalies:'0' } },
+  { id:'netdna',      name:'NETDNA-SRV',     ip:'10.200.0.100',    icon:'⬢',  type:'Server',    group:'Net', vlan:'VLAN-200', risk:8,  trend:'0',   alerts:0, status:'online',
+    detail:{ Role:'NetDNA Application', NetFlow:'Receiving', Anomalies:'0' } },
+  { id:'sw-acc-it',   name:'SW-ACC-IT',      ip:'10.10.0.1',       icon:'◫',  type:'Switch',    group:'IT',  vlan:'VLAN-10',  risk:10, trend:'0',   alerts:0, status:'online',
+    detail:{ NetFlow:'14.2 fps', Anomalies:'0' } },
+  { id:'sw-acc-hr',   name:'SW-ACC-HR',      ip:'10.30.0.1',       icon:'◫',  type:'Switch',    group:'IT',  vlan:'VLAN-30',  risk:8,  trend:'0',   alerts:0, status:'online',
+    detail:{ NetFlow:'9.1 fps', Anomalies:'0' } },
+  { id:'sw-acc-dev',  name:'SW-ACC-DEV',     ip:'10.40.0.1',       icon:'◫',  type:'Switch',    group:'IT',  vlan:'VLAN-40',  risk:15, trend:'+2',  alerts:0, status:'online',
+    detail:{ NetFlow:'22.4 fps', Anomalies:'0' } },
+  { id:'rtr-wan',     name:'RTR-WAN-01',     ip:'10.0.0.2',        icon:'⬡',  type:'Router',    group:'Net', vlan:'WAN',      risk:6,  trend:'0',   alerts:0, status:'online',
+    detail:{ Role:'WAN/NAT', Anomalies:'0' } },
+];
+
+ENTITIES.sort((a,b)=>b.risk-a.risk);
+
+const SEGMENTS = ['VLAN-10','VLAN-20','VLAN-30','VLAN-40','OT-101','OT-102','OT-103','MGMT','WAN'];
+const MATRIX_DATA = [
+  [   0,  0.2,    0,  1.4,    0,    0,    0,  2.1,  0.8],
+  [ 0.2,    0,  0.1, 12.4,  4.2,  0.3, 0.08,  1.8,  5.4],
+  [   0,  0.1,    0,  0.3,    0,    0,    0,  0.9,  0.2],
+  [ 1.4, 12.4,  0.3,    0,    0,  0.1,    0,  3.2,  1.1],
+  [   0,  4.2,    0,    0,    0,  8.4,    0,  0.2,    0],
+  [   0,  0.3,    0,  0.1,  8.4,    0,  2.1,  0.4,    0],
+  [   0, 0.08,    0,    0,    0,  2.1,    0,  0.3, 12.0],
+  [ 2.1,  1.8,  0.9,  3.2,  0.2,  0.4,  0.3,    0,  0.5],
+  [ 0.8,  5.4,  0.2,  1.1,    0,    0, 12.0,  0.5,    0],
+];
+
+const PROTOCOLS = [
+  { name:'Modbus/TCP',   pct:100, flows:4820,  col:'#E2231A',  badge:'⚠ Anomalous', badgeCls:'phb-red' },
+  { name:'SMB/CIFS',     pct:88,  flows:12440, col:'#F7810A',  badge:'⚠ Lateral',   badgeCls:'phb-orange' },
+  { name:'HTTPS/TLS',    pct:76,  flows:38201, col:'#049FD9',  badge:'Normal',       badgeCls:'phb-blue' },
+  { name:'EtherNet/IP',  pct:60,  flows:2104,  col:'#00853E',  badge:'OT',           badgeCls:'phb-blue' },
+  { name:'SSH',          pct:55,  flows:940,   col:'#F7810A',  badge:'⚠ Elevated',   badgeCls:'phb-orange' },
+  { name:'DNS',          pct:48,  flows:18320, col:'#049FD9',  badge:'Normal',       badgeCls:'phb-blue' },
+  { name:'OPC-UA',       pct:40,  flows:1204,  col:'#00853E',  badge:'OT',           badgeCls:'phb-blue' },
+  { name:'DNP3',         pct:35,  flows:820,   col:'#F7810A',  badge:'⚠ Flood',      badgeCls:'phb-orange' },
+  { name:'Kerberos',     pct:30,  flows:4480,  col:'#E2231A',  badge:'⚠ Kerberoast', badgeCls:'phb-red' },
+  { name:'ICMP',         pct:22,  flows:8820,  col:'#049FD9',  badge:'Normal',       badgeCls:'phb-blue' },
+  { name:'RDP',          pct:18,  flows:320,   col:'#F7810A',  badge:'⚠ Probed',     badgeCls:'phb-orange' },
+  { name:'OPC-DA',       pct:14,  flows:444,   col:'#00853E',  badge:'OT',           badgeCls:'phb-blue' },
+];
+
+const DAYS   = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const TIME_DATA = [
+  [0,0,0,0,0,1,0,0,1,0,0,1,2,1,0,1,0,1,0,0,1,0,0,0],
+  [0,0,0,0,0,0,0,1,0,2,1,0,1,0,2,1,0,0,1,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,1,0,0,2,1,3,1,0,1,2,0,0,0,0,0,0],
+  [0,0,0,0,0,0,1,0,2,1,3,2,4,5,3,2,1,1,0,1,0,0,0,0],
+  [0,0,0,0,0,0,0,1,2,4,8,12,15,18,14,10,7,5,3,2,1,0,0,0],
+  [0,0,0,0,0,0,0,0,0,1,2,3,2,1,1,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,1,0,2,4,6,9,12,10,8,5,3,2,1,0,0,0],
+];
+const MAX_TIME = Math.max(...TIME_DATA.flat());
+
+function riskClass(r) {
+  if (r >= 80) return 'risk-crit';
+  if (r >= 60) return 'risk-high';
+  if (r >= 40) return 'risk-med';
+  if (r >= 15) return 'risk-low';
+  return 'risk-none';
+}
+function riskColor(r) {
+  if (r >= 80) return '#E2231A';
+  if (r >= 60) return '#F7810A';
+  if (r >= 40) return '#D4A017';
+  if (r >= 15) return '#049FD9';
+  return 'rgba(4,159,217,.5)';
+}
+
+function renderRiskHeatmap() {
+  const wrap = document.getElementById('heatmapWrap');
+  wrap.innerHTML = '';
+
+  const groups = ['OT','IT','Net'];
+  const groupLabels = { OT:'OT / ICS Network', IT:'IT Corporate Network', Net:'Infrastructure' };
+
+  groups.forEach(g => {
+    const items = ENTITIES.filter(e => e.group === g);
+    if (!items.length) return;
+
+    const secDiv = document.createElement('div');
+
+    const lbl = document.createElement('div');
+    lbl.className = 'hm-section-label';
+    lbl.textContent = groupLabels[g];
+    secDiv.appendChild(lbl);
+
+    const grid = document.createElement('div');
+    grid.className = 'entity-grid';
+
+    items.forEach((e, i) => {
+      const cell = document.createElement('div');
+      cell.className = `eg-cell ${riskClass(e.risk)}`;
+      cell.style.animationDelay = (i * 0.04) + 's';
+
+      const trendDir = e.trend.startsWith('+') ? '↑' : e.trend.startsWith('-') ? '↓' : '—';
+      const trendNum = e.trend === '0' ? '' : e.trend;
+
+      cell.innerHTML = `
+        <span class="eg-icon">${e.icon}</span>
+        <div class="eg-name">${e.name}</div>
+        <div class="eg-ip">${e.ip}</div>
+        <div class="eg-score-row">
+          <div class="eg-score">${e.risk}</div>
+          <div class="eg-trend">${trendNum ? trendDir + ' ' + trendNum.replace('+','') : '—'}</div>
+        </div>
+        <div class="eg-bar"><div class="eg-fill" style="width:0%" data-w="${e.risk}%"></div></div>
+      `;
+
+      cell.addEventListener('mouseenter', ev => showEntityTip(e, ev));
+      cell.addEventListener('mousemove',  ev => moveTip(ev));
+      cell.addEventListener('mouseleave', hideTip);
+
+      grid.appendChild(cell);
+    });
+
+    secDiv.appendChild(grid);
+    wrap.appendChild(secDiv);
+  });
+
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.eg-fill').forEach(f => {
+      f.style.width = f.dataset.w;
+    });
+  });
+
+  const crits = ENTITIES.filter(e=>e.risk>=80).length;
+  const warns  = ENTITIES.filter(e=>e.risk>=40&&e.risk<80).length;
+  document.getElementById('critBadge').textContent  = crits + ' Critical';
+  document.getElementById('warnBadge').textContent  = warns + ' Warning';
+  document.getElementById('mainSub').textContent    = ENTITIES.length + ' devices · sorted by risk score';
+  document.getElementById('sbEntities').textContent = ENTITIES.length;
+  document.getElementById('sbCrit').textContent     = crits;
+  document.getElementById('sbWarn').textContent     = warns;
+}
+
+function renderTimeHeatmap() {
+  const wrap = document.getElementById('timeWrap');
+  wrap.innerHTML = '';
+
+  const axis = document.createElement('div');
+  axis.className = 'time-axis';
+  for (let h = 0; h < 24; h++) {
+    const span = document.createElement('div');
+    span.className = 'ta-hour';
+    span.textContent = h === 0 ? '00' : h % 4 === 0 ? String(h).padStart(2,'0') : '';
+    axis.appendChild(span);
+  }
+  wrap.appendChild(axis);
+
+  const rows = document.createElement('div');
+  rows.className = 'time-rows';
+
+  DAYS.forEach((day, di) => {
+    const row = document.createElement('div');
+    row.className = 'tr-row';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'tr-label';
+    lbl.textContent = day;
+    row.appendChild(lbl);
+
+    const cells = document.createElement('div');
+    cells.className = 'tr-cells';
+
+    TIME_DATA[di].forEach((val, hi) => {
+      const cell = document.createElement('div');
+      cell.className = 'tc';
+      const norm = val / MAX_TIME;
+
+      let bg;
+      if (val === 0) {
+        bg = 'rgba(0,0,0,.03)';
+      } else if (norm < 0.15) {
+        bg = `rgba(4,159,217,${0.12 + norm * 1.2})`;
+      } else if (norm < 0.4) {
+        bg = `rgba(4,159,217,${0.3 + norm * 0.8})`;
+      } else if (norm < 0.65) {
+        bg = `rgba(247,129,10,${0.35 + norm * 0.55})`;
+      } else {
+        bg = `rgba(226,35,26,${0.5 + norm * 0.45})`;
+      }
+
+      const rowH = Math.max(18, (wrap.offsetHeight - 60) / 7 - 3);
+      cell.style.cssText = `background:${bg};height:${rowH}px`;
+
+      if (val > 0) {
+        cell.addEventListener('mouseenter', ev => showTimeTip(day, hi, val, ev));
+        cell.addEventListener('mousemove', moveTip);
+        cell.addEventListener('mouseleave', hideTip);
+      }
+
+      cells.appendChild(cell);
+    });
+
+    row.appendChild(cells);
+    rows.appendChild(row);
+  });
+
+  wrap.appendChild(rows);
+}
+
+function renderMatrix() {
+  const wrap = document.getElementById('matrixWrap');
+  wrap.innerHTML = '';
+
+  const maxVal = Math.max(...MATRIX_DATA.flat());
+
+  const tbl = document.createElement('table');
+  tbl.className = 'matrix-table';
+
+  const thead = tbl.createTHead();
+  const hr = thead.insertRow();
+  hr.insertCell();
+
+  SEGMENTS.forEach(s => {
+    const th = document.createElement('th');
+    th.className = 'mt-head';
+    th.textContent = s;
+    hr.appendChild(th);
+  });
+
+  const tbody = tbl.createTBody();
+  MATRIX_DATA.forEach((row, ri) => {
+    const tr = tbody.insertRow();
+    const lbl = tr.insertCell();
+    lbl.className = 'mt-label';
+    lbl.textContent = SEGMENTS[ri];
+
+    row.forEach((val, ci) => {
+      const td = tr.insertCell();
+      if (ri === ci) {
+        td.className = 'mt-cell mt-self';
+      } else {
+        td.className = 'mt-cell';
+        const norm = val / maxVal;
+
+        let bg;
+        if (val === 0) {
+          bg = 'rgba(0,0,0,.03)';
+        } else {
+          const isCross = (ri <= 3 && ci >= 4) || (ri >= 4 && ci <= 3);
+          const isExfil  = (SEGMENTS[ri]==='OT-103'||SEGMENTS[ci]==='OT-103') && (SEGMENTS[ri]==='WAN'||SEGMENTS[ci]==='WAN');
+          if (isExfil) {
+            bg = `rgba(226,35,26,${0.35+norm*0.6})`;
+          } else if (isCross && norm > 0.1) {
+            bg = `rgba(247,129,10,${0.25+norm*0.65})`;
+          } else if (norm > 0.8) {
+            bg = `rgba(226,35,26,${0.6+norm*.35})`;
+          } else if (norm > 0.4) {
+            bg = `rgba(247,129,10,${0.35+norm*0.55})`;
+          } else {
+            bg = `rgba(4,159,217,${0.1+norm*0.55})`;
+          }
+        }
+
+        td.style.background = bg;
+        td.addEventListener('mouseenter', ev => showMatrixTip(ri, ci, val, ev));
+        td.addEventListener('mousemove', moveTip);
+        td.addEventListener('mouseleave', hideTip);
+      }
+    });
+  });
+
+  wrap.appendChild(tbl);
+}
+
+function renderProtocols() {
+  const wrap = document.getElementById('protoWrap');
+  wrap.innerHTML = '';
+
+  PROTOCOLS.forEach((p, i) => {
+    const row = document.createElement('div');
+    row.className = 'proto-row';
+
+    row.innerHTML = `
+      <div class="proto-name">${p.name}</div>
+      <div class="proto-track">
+        <div class="proto-fill" style="width:0%;background:${p.col};transition-delay:${i*0.06}s" data-w="${p.pct}%">
+          <span class="proto-pct">${p.pct}%</span>
+        </div>
+      </div>
+      <div class="proto-count">${(p.flows/1000).toFixed(1)}k/hr</div>
+      <span class="ph-badge ${p.badgeCls} proto-badge">${p.badge}</span>
+    `;
+
+    row.querySelector('.proto-track').addEventListener('mouseenter', ev => showProtoTip(p, ev));
+    row.querySelector('.proto-track').addEventListener('mousemove', moveTip);
+    row.querySelector('.proto-track').addEventListener('mouseleave', hideTip);
+
+    wrap.appendChild(row);
+  });
+
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.proto-fill').forEach(f => {
+      f.style.width = f.dataset.w;
+    });
+  });
+}
+
+const tipEl = document.getElementById('tooltip');
+
+function showEntityTip(e, ev) {
+  const rc = riskColor(e.risk);
+  let rows = '';
+  rows += tipRow('IP', e.ip);
+  rows += tipRow('VLAN', e.vlan);
+  if (e.user) rows += tipRow('User', e.user);
+  rows += tipRow('Risk Score', `<span style="color:${rc};font-weight:700">${e.risk} / 100</span>`);
+  rows += tipRow('Trend', e.trend === '0' ? '— stable' : `↑ +${e.trend.replace('+','')} (24h)`);
+  Object.entries(e.detail).forEach(([k,v]) => {
+    rows += tipRow(k, v);
+  });
+
+  tipEl.innerHTML = `<div class="tt-title">${e.icon} ${e.name}</div><hr class="tt-div">${rows}`;
+  tipEl.classList.add('show');
+  moveTip(ev);
+}
+
+function showTimeTip(day, hour, count, ev) {
+  const col = count < 3 ? 'var(--hm-blue)' : count < 8 ? 'var(--hm-orange)' : 'var(--hm-red)';
+  const severity = count === 0 ? 'None' : count < 3 ? 'Low' : count < 8 ? 'Medium' : count < 14 ? 'High' : 'Critical';
+  tipEl.innerHTML = `
+    <div class="tt-title">${day} ${String(hour).padStart(2,'0')}:00</div>
+    <hr class="tt-div">
+    ${tipRow('Anomalies', `<span style="color:${col}">${count}</span>`)}
+    ${tipRow('Severity', severity)}
+    ${tipRow('Window', `${String(hour).padStart(2,'0')}:00 – ${String(hour+1).padStart(2,'0')}:00`)}
+  `;
+  tipEl.classList.add('show');
+  moveTip(ev);
+}
+
+function showMatrixTip(ri, ci, val, ev) {
+  const isCross = (ri <= 3 && ci >= 4) || (ri >= 4 && ci <= 3);
+  const isExfil = (SEGMENTS[ri]==='OT-103'||SEGMENTS[ci]==='OT-103') && (SEGMENTS[ri]==='WAN'||SEGMENTS[ci]==='WAN');
+  const flag = isExfil ? '🚨 Exfiltration suspected' : isCross && val > 0.5 ? '⚠ Cross-zone traffic' : '';
+  tipEl.innerHTML = `
+    <div class="tt-title">${SEGMENTS[ri]} → ${SEGMENTS[ci]}</div>
+    <hr class="tt-div">
+    ${tipRow('Volume', val.toFixed(2) + ' MB/hr')}
+    ${tipRow('Direction', SEGMENTS[ri] + ' → ' + SEGMENTS[ci])}
+    ${flag ? `<div style="color:var(--hm-red);font-size:10px;margin-top:5px">${flag}</div>` : ''}
+  `;
+  tipEl.classList.add('show');
+  moveTip(ev);
+}
+
+function showProtoTip(p, ev) {
+  tipEl.innerHTML = `
+    <div class="tt-title">${p.name}</div>
+    <hr class="tt-div">
+    ${tipRow('Activity', p.pct + '% of baseline')}
+    ${tipRow('Flows / hr', p.flows.toLocaleString())}
+    ${tipRow('Status', p.badge)}
+  `;
+  tipEl.classList.add('show');
+  moveTip(ev);
+}
+
+function tipRow(k, v) {
+  return `<div class="tt-row"><span class="tt-k">${k}</span><span class="tt-v">${v}</span></div>`;
+}
+
+function hideTip() { tipEl.classList.remove('show'); }
+function moveTip(ev) {
+  const x = ev.clientX + 16, y = ev.clientY - 44;
+  tipEl.style.left = Math.min(x, window.innerWidth - 260) + 'px';
+  tipEl.style.top  = Math.max(y, 60) + 'px';
+}
+
+let activeView = 'risk';
+
+function switchView(view, btn) {
+  document.querySelectorAll('.vt').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  activeView = view;
+
+  const grid = document.getElementById('mainGrid');
+  const tv   = document.getElementById('trafficView');
+  const ev   = document.getElementById('entityView');
+
+  grid.style.display = 'none';
+  tv.style.display   = 'none';
+  ev.style.display   = 'none';
+
+  if (view === 'traffic') {
+    tv.style.display = 'block';
+    renderTrafficFlow();
+  } else if (view === 'entity') {
+    ev.style.display = 'block';
+    renderEntityMatrix();
+  } else {
+    grid.style.display = '';
+    renderAll();
+  }
+}
+
+function renderTrafficFlow() {
+  const tv = document.getElementById('trafficView');
+
+  const totalFlows = PROTOCOLS.reduce((s, p) => s + p.flows, 0);
+  const crossFlows = [];
+  const maxVol = Math.max(...MATRIX_DATA.flat());
+  MATRIX_DATA.forEach((row, ri) => {
+    row.forEach((val, ci) => {
+      if (ri === ci || val === 0) return;
+      const isCross = (ri <= 3 && ci >= 4) || (ri >= 4 && ci <= 3);
+      const isExfil = (SEGMENTS[ri]==='OT-103'||SEGMENTS[ci]==='OT-103') && (SEGMENTS[ri]==='WAN'||SEGMENTS[ci]==='WAN');
+      crossFlows.push({ src: SEGMENTS[ri], dst: SEGMENTS[ci], vol: val, isCross, isExfil });
+    });
+  });
+  crossFlows.sort((a, b) => b.vol - a.vol);
+  const crossZoneCount = crossFlows.filter(f => f.isCross).length;
+  const anomProtos = PROTOCOLS.filter(p => p.badge.includes('⚠')).length;
+  const topBW = crossFlows.length ? crossFlows[0].vol.toFixed(1) : '0';
+
+  const talkers = ENTITIES
+    .filter(e => e.detail && (e.detail.Flows || e.detail.NetFlow))
+    .map(e => {
+      const raw = e.detail.Flows || e.detail.NetFlow || '0';
+      const num = parseFloat(raw.replace(/[^0-9.]/g, ''));
+      return { ...e, flowNum: num, flowStr: raw };
+    })
+    .sort((a, b) => b.flowNum - a.flowNum)
+    .slice(0, 8);
+
+  tv.innerHTML = `
+    <div class="tf-stats" data-testid="traffic-stats">
+      <div class="tf-stat">
+        <div class="tf-stat-accent" style="background:var(--hm-blue)"></div>
+        <div class="tf-stat-label">Total Flows / hr</div>
+        <div class="tf-stat-val" data-testid="text-total-flows">${(totalFlows/1000).toFixed(1)}k</div>
+        <div class="tf-stat-sub">${PROTOCOLS.length} protocols observed</div>
+      </div>
+      <div class="tf-stat">
+        <div class="tf-stat-accent" style="background:var(--hm-orange)"></div>
+        <div class="tf-stat-label">Cross-Zone Flows</div>
+        <div class="tf-stat-val" data-testid="text-cross-zone">${crossZoneCount}</div>
+        <div class="tf-stat-sub">IT/OT boundary crossings</div>
+      </div>
+      <div class="tf-stat">
+        <div class="tf-stat-accent" style="background:var(--hm-red)"></div>
+        <div class="tf-stat-label">Anomalous Protocols</div>
+        <div class="tf-stat-val" data-testid="text-anomalous-protos">${anomProtos}</div>
+        <div class="tf-stat-sub">Require investigation</div>
+      </div>
+      <div class="tf-stat">
+        <div class="tf-stat-accent" style="background:var(--hm-green)"></div>
+        <div class="tf-stat-label">Top Bandwidth</div>
+        <div class="tf-stat-val" data-testid="text-top-bw">${topBW}</div>
+        <div class="tf-stat-sub">MB/hr peak segment pair</div>
+      </div>
+    </div>
+
+    <div class="tf-section">
+      <div class="tf-section-head">
+        <div class="tf-section-title">VLAN-to-VLAN Traffic Flows</div>
+        <span class="tf-section-badge">${crossFlows.length} active pairs</span>
+      </div>
+      <div class="tf-columns">
+        <div>
+          <table class="tf-flow-tbl" data-testid="traffic-flow-table">
+            <thead>
+              <tr><th>Source</th><th></th><th>Destination</th><th>Volume</th><th style="min-width:100px">Throughput</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              ${crossFlows.slice(0, 16).map((f, i) => {
+                const pct = (f.vol / maxVol * 100).toFixed(0);
+                const barCol = f.isExfil ? 'var(--hm-red)' : f.isCross ? 'var(--hm-orange)' : 'var(--hm-blue)';
+                const flagCls = f.isExfil ? 'tf-flag-exfil' : f.isCross ? 'tf-flag-cross' : 'tf-flag-normal';
+                const flagTxt = f.isExfil ? 'EXFIL' : f.isCross ? 'CROSS-ZONE' : 'NORMAL';
+                return `<tr data-testid="row-flow-${i}" onmouseenter="showFlowTip('${f.src}','${f.dst}',${f.vol},${f.isCross},${f.isExfil},event)" onmousemove="moveTip(event)" onmouseleave="hideTip()">
+                  <td><span class="tf-seg">${f.src}</span></td>
+                  <td><span class="tf-arrow">&#8594;</span></td>
+                  <td><span class="tf-seg">${f.dst}</span></td>
+                  <td>${f.vol.toFixed(2)} MB/hr</td>
+                  <td><div class="tf-vol-bar"><div class="tf-vol-fill" style="width:${pct}%;background:${barCol}" data-w="${pct}%"></div></div></td>
+                  <td><span class="tf-flag ${flagCls}">${flagTxt}</span></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--hm-text);margin-bottom:8px">Top Talkers</div>
+          <div class="tf-talkers" data-testid="traffic-top-talkers">
+            ${talkers.map((t, i) => `
+              <div class="tf-talker" data-testid="card-talker-${i}" onmouseenter="showTalkerTip(${i},event)" onmousemove="moveTip(event)" onmouseleave="hideTip()">
+                <span class="tf-talker-icon">${t.icon}</span>
+                <div class="tf-talker-info">
+                  <div class="tf-talker-name">${t.name}</div>
+                  <div class="tf-talker-ip">${t.ip}</div>
+                  <div class="tf-talker-proto">${t.detail.Protocol || t.detail.Role || '—'}</div>
+                </div>
+                <div class="tf-talker-flows">${t.flowStr}<small>flows</small></div>
+                <div class="tf-talker-risk" style="background:${riskColor(t.risk)}"></div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tf-proto-section tf-section">
+      <div class="tf-section-head">
+        <div class="tf-section-title">Protocol Distribution</div>
+        <span class="tf-section-badge">${totalFlows.toLocaleString()} total flows/hr</span>
+      </div>
+      <div class="tf-proto-grid" data-testid="traffic-proto-grid">
+        ${PROTOCOLS.map((p, i) => {
+          const share = (p.flows / totalFlows * 100).toFixed(1);
+          return `<div class="tf-proto-card" data-testid="card-proto-${i}" onmouseenter="showProtoTip(PROTOCOLS[${i}],event)" onmousemove="moveTip(event)" onmouseleave="hideTip()">
+            <div class="tf-proto-dot" style="background:${p.col}"></div>
+            <div class="tf-proto-info">
+              <div class="tf-proto-name">${p.name}</div>
+              <div class="tf-proto-flows">${(p.flows/1000).toFixed(1)}k/hr &middot; <span class="ph-badge ${p.badgeCls}" style="font-size:8px;padding:1px 5px">${p.badge}</span></div>
+            </div>
+            <div class="tf-proto-bar-wrap"><div class="tf-proto-bar-fill" style="width:${share}%;background:${p.col}"></div></div>
+            <div class="tf-proto-pct">${share}%</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+
+  requestAnimationFrame(() => {
+    tv.querySelectorAll('.tf-vol-fill').forEach(f => { f.style.width = f.dataset.w; });
+  });
+}
+
+const _talkerCache = [];
+function cacheTalkers() {
+  _talkerCache.length = 0;
+  ENTITIES
+    .filter(e => e.detail && (e.detail.Flows || e.detail.NetFlow))
+    .map(e => {
+      const raw = e.detail.Flows || e.detail.NetFlow || '0';
+      const num = parseFloat(raw.replace(/[^0-9.]/g, ''));
+      return { ...e, flowNum: num, flowStr: raw };
+    })
+    .sort((a, b) => b.flowNum - a.flowNum)
+    .slice(0, 8)
+    .forEach(t => _talkerCache.push(t));
+}
+
+function showFlowTip(src, dst, vol, isCross, isExfil, ev) {
+  const flag = isExfil ? '<div style="color:var(--hm-red);font-size:10px;margin-top:5px">Exfiltration suspected</div>'
+              : isCross ? '<div style="color:var(--hm-orange);font-size:10px;margin-top:5px">Cross-zone traffic</div>' : '';
+  tipEl.innerHTML = `
+    <div class="tt-title">${src} &#8594; ${dst}</div>
+    <hr class="tt-div">
+    ${tipRow('Volume', vol.toFixed(2) + ' MB/hr')}
+    ${tipRow('Type', isExfil ? 'Exfiltration' : isCross ? 'Cross-Zone' : 'Intra-Zone')}
+    ${flag}
+  `;
+  tipEl.classList.add('show');
+  moveTip(ev);
+}
+
+function showTalkerTip(idx, ev) {
+  if (!_talkerCache.length) cacheTalkers();
+  const t = _talkerCache[idx];
+  if (!t) return;
+  tipEl.innerHTML = `
+    <div class="tt-title">${t.icon} ${t.name}</div>
+    <hr class="tt-div">
+    ${tipRow('IP', t.ip)}
+    ${tipRow('VLAN', t.vlan)}
+    ${tipRow('Flows', t.flowStr)}
+    ${tipRow('Risk', `<span style="color:${riskColor(t.risk)};font-weight:700">${t.risk}/100</span>`)}
+    ${Object.entries(t.detail).map(([k,v]) => tipRow(k, v)).join('')}
+  `;
+  tipEl.classList.add('show');
+  moveTip(ev);
+}
+
+let emSortKey = 'risk';
+let emSortDir = -1;
+let emFilterGroup = 'All';
+
+function renderEntityMatrix() {
+  const ev = document.getElementById('entityView');
+  const crits = ENTITIES.filter(e => e.risk >= 80).length;
+  const warns = ENTITIES.filter(e => e.risk >= 40 && e.risk < 80).length;
+  const clean = ENTITIES.filter(e => e.risk < 40).length;
+  const groups = { All: ENTITIES.length, IT: 0, OT: 0, Net: 0 };
+  ENTITIES.forEach(e => { if (groups[e.group] !== undefined) groups[e.group]++; });
+
+  let filtered = emFilterGroup === 'All' ? [...ENTITIES] : ENTITIES.filter(e => e.group === emFilterGroup);
+  filtered.sort((a, b) => {
+    let va, vb;
+    if (emSortKey === 'risk') { va = a.risk; vb = b.risk; }
+    else if (emSortKey === 'name') { va = a.name.toLowerCase(); vb = b.name.toLowerCase(); }
+    else if (emSortKey === 'alerts') { va = a.alerts; vb = b.alerts; }
+    else if (emSortKey === 'type') { va = a.type; vb = b.type; }
+    else if (emSortKey === 'vlan') { va = a.vlan; vb = b.vlan; }
+    else { va = a.risk; vb = b.risk; }
+    if (va < vb) return emSortDir;
+    if (va > vb) return -emSortDir;
+    return 0;
+  });
+
+  const statusColor = s => s === 'critical' ? 'var(--hm-red)' : s === 'warn' ? 'var(--hm-orange)' : 'var(--hm-green)';
+  const alertBg = n => n >= 3 ? 'rgba(226,35,26,.08)' : n >= 1 ? 'rgba(247,129,10,.08)' : 'var(--hm-bg)';
+  const alertCol = n => n >= 3 ? 'var(--hm-red)' : n >= 1 ? 'var(--hm-orange)' : 'var(--hm-dim)';
+  const alertBorder = n => n >= 3 ? 'rgba(226,35,26,.2)' : n >= 1 ? 'rgba(247,129,10,.2)' : 'var(--hm-border)';
+  const sortArrow = key => emSortKey === key ? (emSortDir === -1 ? '▼' : '▲') : '⇅';
+  const sortCls = key => emSortKey === key ? 'sorted' : '';
+
+  const segMap = {};
+  SEGMENTS.forEach((s, i) => { segMap[s] = i; });
+  const adjEntities = filtered.slice(0, 14);
+
+  ev.innerHTML = `
+    <div class="em-stats" data-testid="entity-stats">
+      <div class="em-stat"><div class="em-stat-accent" style="background:var(--hm-blue)"></div>
+        <div class="em-stat-label">Total Entities</div>
+        <div class="em-stat-val" data-testid="text-entity-total">${ENTITIES.length}</div>
+        <div class="em-stat-sub">Monitored devices</div></div>
+      <div class="em-stat"><div class="em-stat-accent" style="background:var(--hm-red)"></div>
+        <div class="em-stat-label">Critical</div>
+        <div class="em-stat-val" data-testid="text-entity-critical">${crits}</div>
+        <div class="em-stat-sub">Risk score ≥ 80</div></div>
+      <div class="em-stat"><div class="em-stat-accent" style="background:var(--hm-orange)"></div>
+        <div class="em-stat-label">Warning</div>
+        <div class="em-stat-val" data-testid="text-entity-warning">${warns}</div>
+        <div class="em-stat-sub">Risk score 40–79</div></div>
+      <div class="em-stat"><div class="em-stat-accent" style="background:var(--hm-green)"></div>
+        <div class="em-stat-label">Clean</div>
+        <div class="em-stat-val" data-testid="text-entity-clean">${clean}</div>
+        <div class="em-stat-sub">Risk score &lt; 40</div></div>
+    </div>
+
+    <div class="em-filters" data-testid="entity-filters">
+      ${['All','IT','OT','Net'].map(g => `<button class="em-filter${emFilterGroup===g?' on':''}" data-testid="button-filter-${g.toLowerCase()}" onclick="emSetFilter('${g}')">${g}<span class="em-filter-count">${groups[g]}</span></button>`).join('')}
+    </div>
+
+    <div class="em-tbl-wrap">
+      <table class="em-tbl" data-testid="entity-table">
+        <thead><tr>
+          <th style="width:30px"></th>
+          <th class="${sortCls('name')}" onclick="emSetSort('name')">Name <span class="em-sort">${sortArrow('name')}</span></th>
+          <th>IP</th>
+          <th class="${sortCls('type')}" onclick="emSetSort('type')">Type <span class="em-sort">${sortArrow('type')}</span></th>
+          <th class="${sortCls('vlan')}" onclick="emSetSort('vlan')">VLAN <span class="em-sort">${sortArrow('vlan')}</span></th>
+          <th>Group</th>
+          <th class="${sortCls('risk')}" onclick="emSetSort('risk')">Risk <span class="em-sort">${sortArrow('risk')}</span></th>
+          <th>Trend</th>
+          <th class="${sortCls('alerts')}" onclick="emSetSort('alerts')">Alerts <span class="em-sort">${sortArrow('alerts')}</span></th>
+          <th>Last Alert</th>
+        </tr></thead>
+        <tbody>
+          ${filtered.map((e, i) => {
+            const rc = riskColor(e.risk);
+            const trendDir = e.trend.startsWith('+') ? '↑' : e.trend === '0' ? '—' : '↓';
+            const trendTxt = e.trend === '0' ? '—' : trendDir + ' ' + e.trend.replace('+','');
+            const lastAlert = e.detail.LastAlert || '—';
+            return `<tr data-testid="row-entity-${i}" onmouseenter="showEntityTip(ENTITIES.find(x=>x.id==='${e.id}'),event)" onmousemove="moveTip(event)" onmouseleave="hideTip()">
+              <td><span class="em-status-dot" style="background:${statusColor(e.status)}"></span></td>
+              <td><div class="em-name-cell"><span class="em-icon">${e.icon}</span><span class="em-name">${e.name}</span></div></td>
+              <td style="font-family:monospace;font-size:10px">${e.ip}</td>
+              <td><span class="em-type-badge">${e.type}</span></td>
+              <td style="font-size:10px;font-weight:600">${e.vlan}</td>
+              <td style="font-size:10px;font-weight:600;color:var(--hm-mid)">${e.group}</td>
+              <td><div class="em-risk-cell"><span class="em-risk-val" style="color:${rc}">${Math.round(e.risk)}</span><div class="em-risk-bar"><div class="em-risk-fill" style="width:${e.risk}%;background:${rc}"></div></div></div></td>
+              <td><span class="em-trend" style="color:${rc}">${trendTxt}</span></td>
+              <td><span class="em-alert-badge" style="background:${alertBg(e.alerts)};color:${alertCol(e.alerts)};border:1px solid ${alertBorder(e.alerts)}">${e.alerts}</span></td>
+              <td><span class="em-last-alert" title="${lastAlert}">${lastAlert}</span></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="em-adj-section">
+      <div class="em-adj-title">Entity Adjacency Matrix</div>
+      <div class="em-adj-wrap" data-testid="entity-adjacency">
+        <table class="em-adj-tbl" id="adjMatrix"></table>
+      </div>
+    </div>
+  `;
+
+  renderAdjMatrix(adjEntities);
+}
+
+function renderAdjMatrix(entities) {
+  const tbl = document.getElementById('adjMatrix');
+  if (!tbl) return;
+  const segMap = {};
+  SEGMENTS.forEach((s, i) => { segMap[s] = i; });
+
+  function getSegIdx(vlan) {
+    if (segMap[vlan] !== undefined) return segMap[vlan];
+    if (vlan.startsWith('VLAN-10')) return segMap['VLAN-10'] ?? -1;
+    if (vlan.startsWith('VLAN-20')) return segMap['VLAN-20'] ?? -1;
+    if (vlan.startsWith('VLAN-30')) return segMap['VLAN-30'] ?? -1;
+    if (vlan.startsWith('VLAN-40')) return segMap['VLAN-40'] ?? -1;
+    if (vlan.startsWith('VLAN-101')) return segMap['OT-101'] ?? -1;
+    if (vlan.startsWith('VLAN-102')) return segMap['OT-102'] ?? -1;
+    if (vlan.startsWith('VLAN-103')) return segMap['OT-103'] ?? -1;
+    if (vlan.includes('MGMT') || vlan === 'Core') return segMap['MGMT'] ?? -1;
+    if (vlan === 'Edge' || vlan === 'WAN' || vlan === 'OT Core') return segMap['WAN'] ?? -1;
+    return -1;
+  }
+
+  let html = '<tr><td></td>';
+  entities.forEach(e => { html += `<th class="em-adj-head">${e.name}</th>`; });
+  html += '</tr>';
+
+  entities.forEach((row, ri) => {
+    html += '<tr>';
+    html += `<td class="em-adj-label">${row.icon} ${row.name}</td>`;
+    entities.forEach((col, ci) => {
+      if (ri === ci) {
+        html += '<td class="em-adj-cell em-adj-self"></td>';
+      } else {
+        const si = getSegIdx(row.vlan);
+        const sj = getSegIdx(col.vlan);
+        const sameVlan = row.vlan === col.vlan;
+        let flow = 0;
+        if (si >= 0 && sj >= 0) flow = MATRIX_DATA[si][sj];
+        const isCross = si >= 0 && sj >= 0 && ((si <= 3 && sj >= 4) || (si >= 4 && sj <= 3));
+        let bg;
+        if (sameVlan) {
+          bg = 'rgba(4,159,217,.25)';
+        } else if (flow > 5) {
+          bg = isCross ? 'rgba(226,35,26,.55)' : 'rgba(247,129,10,.45)';
+        } else if (flow > 1) {
+          bg = isCross ? 'rgba(247,129,10,.35)' : 'rgba(4,159,217,.3)';
+        } else if (flow > 0) {
+          bg = 'rgba(4,159,217,.12)';
+        } else {
+          bg = 'rgba(0,0,0,.03)';
+        }
+        html += `<td class="em-adj-cell" style="background:${bg}" onmouseenter="showAdjTip('${row.name}','${col.name}',${flow},${sameVlan},${isCross},event)" onmousemove="moveTip(event)" onmouseleave="hideTip()"></td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  tbl.innerHTML = html;
+}
+
+function showAdjTip(src, dst, flow, sameVlan, isCross, ev) {
+  const rel = sameVlan ? 'Same VLAN' : isCross ? 'Cross-Zone' : 'Inter-Segment';
+  const relCol = sameVlan ? 'var(--hm-blue)' : isCross ? 'var(--hm-red)' : 'var(--hm-mid)';
+  tipEl.innerHTML = `
+    <div class="tt-title">${src} ↔ ${dst}</div>
+    <hr class="tt-div">
+    ${tipRow('Relationship', `<span style="color:${relCol}">${rel}</span>`)}
+    ${tipRow('Traffic', flow > 0 ? flow.toFixed(2) + ' MB/hr' : 'No direct flow')}
+    ${flow > 5 ? '<div style="color:var(--hm-orange);font-size:10px;margin-top:4px">High traffic volume</div>' : ''}
+  `;
+  tipEl.classList.add('show');
+  moveTip(ev);
+}
+
+function emSetSort(key) {
+  if (emSortKey === key) { emSortDir *= -1; }
+  else { emSortKey = key; emSortDir = -1; }
+  renderEntityMatrix();
+}
+
+function emSetFilter(group) {
+  emFilterGroup = group;
+  renderEntityMatrix();
+}
+
+function setRange(btn, range) {
+  document.querySelectorAll('.tr-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+function liveUpdate() {
+  ENTITIES.forEach(e => {
+    if (e.risk >= 60) {
+      const delta = (Math.random() - 0.45) * 3;
+      e.risk = Math.max(40, Math.min(99, e.risk + delta));
+    }
+  });
+  ENTITIES.sort((a,b) => b.risk - a.risk);
+
+  document.querySelectorAll('.risk-crit').forEach(c => {
+    c.style.boxShadow = `0 0 ${6 + Math.random()*6}px rgba(226,35,26,.12)`;
+  });
+}
+
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function renderAll() {
+  renderRiskHeatmap();
+  renderTimeHeatmap();
+  renderMatrix();
+  renderProtocols();
+}
+
+renderAll();
+setInterval(liveUpdate, 4000);
+
+window.addEventListener('resize', () => {
+  renderTimeHeatmap();
+});
+</script>
+</body>
+</html>

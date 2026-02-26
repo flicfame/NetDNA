@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — OT Networks</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/shared.css">
+</head>
+<body>
+
+<div id="navMount"></div>
+
+<div class="subhdr">
+  <div class="breadcrumb">
+    <span>NetDNA</span><span>›</span>
+    <span class="cur">OT Networks</span>
+  </div>
+  <div style="display:flex;gap:6px;border-left:1px solid var(--border);padding-left:10px;">
+    <a class="btn btn-sec" href="/dashboard" style="font-size:11px">Overview</a>
+    <a class="btn btn-sec" href="/topology" style="font-size:11px">Topology</a>
+    <a class="btn btn-sec" href="/remote" style="font-size:11px">Remote &amp; Wireless</a>
+    <a class="btn btn-sec" href="/ot" style="font-size:11px;background:var(--cisco-blue);color:#fff;border-color:var(--cisco-blue)">OT Networks</a>
+    <a class="btn btn-sec" href="/heatmap" style="font-size:11px">Heatmap</a>
+    <a class="btn btn-sec" href="/prediction" style="font-size:11px">Prediction</a>
+    <a class="btn btn-sec" href="/quarantine" style="font-size:11px">ISE Response</a>
+  </div>
+</div>
+
+<div class="page">
+  <div style="background:linear-gradient(135deg,#004BAF 0%,#049FD9 100%);border-radius:8px;padding:16px 22px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:13px;font-weight:700;color:#fff;letter-spacing:.3px">OT Segmentation Validation</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.8);margin-top:3px">Continuous validation that OT segmentation is preventing IT-originated process interference</div>
+    </div>
+    <div id="segHealthBadge" style="background:rgba(255,255,255,.15);border-radius:5px;padding:6px 14px;font-size:11px;font-weight:700;color:#fff">Analysing...</div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">OT Devices</div>
+        <div class="kpi-ico" style="background:var(--cisco-bg)">⚙</div></div>
+      <div class="kpi-val kv-blue" id="ot-kDevices">—</div>
+      <div class="kpi-delta" style="color:var(--g50)">PLCs · RTUs · HMIs · SCADA</div>
+      <div class="kpi-track"><div class="kpi-fill" id="ot-kDevBar" style="background:var(--cisco-blue)"></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Flagged Devices</div>
+        <div class="kpi-ico" style="background:var(--red-lt)">🚨</div></div>
+      <div class="kpi-val kv-red" id="ot-kFlagged">—</div>
+      <div class="kpi-delta" style="color:var(--g50)">anomalous behaviour detected</div>
+      <div class="kpi-track"><div class="kpi-fill" id="ot-kFlagBar" style="background:var(--red)"></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Open ICS Events</div>
+        <div class="kpi-ico" style="background:var(--red-lt)">⚠</div></div>
+      <div class="kpi-val kv-red" id="ot-kEvents">—</div>
+      <div class="kpi-delta" style="color:var(--g50)">MITRE ATT&amp;CK for ICS mapped</div>
+      <div class="kpi-track"><div class="kpi-fill" id="ot-kEvBar" style="background:var(--red)"></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Process Alarms</div>
+        <div class="kpi-ico" style="background:var(--orange-lt)">🌡</div></div>
+      <div class="kpi-val kv-orange" id="ot-kAlarms">—</div>
+      <div class="kpi-delta" style="color:var(--g50)">values outside safe range</div>
+      <div class="kpi-track"><div class="kpi-fill" id="ot-kAlBar" style="background:var(--orange)"></div></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="left-col">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--cisco-blue)"></div>Cisco Deployment Risk — Segmentation Events</div>
+          <span class="cbadge red" id="ot-evCount">Loading...</span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Severity</th><th>Device</th><th>NetDNA Event</th>
+            <th>Cisco Risk</th><th>MITRE ICS</th><th>Time</th>
+          </tr></thead>
+          <tbody id="ot-evTable">
+            <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--g50)">Loading ICS events...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--cisco-blue)"></div>Purdue Model — Device Map</div>
+          <span class="cbadge blue">ISA-99 / IEC 62443</span>
+        </div>
+        <div id="purdueMap" style="padding:14px 18px">
+          <div style="color:var(--g50);text-align:center;padding:20px">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--cisco-blue)"></div>Risk Category Breakdown</div>
+        </div>
+        <div id="riskCategories" style="padding:14px 18px">
+          <div style="color:var(--g50);font-size:12px">Loading...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--green)"></div>Live Process Values</div>
+          <span class="cbadge red">LIVE</span>
+        </div>
+        <div id="ot-processValues">
+          <div style="padding:14px 18px;color:var(--g50);font-size:12px">Loading...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--cisco-blue)"></div>OT Protocol Traffic</div>
+        </div>
+        <div style="padding:14px 18px"><canvas id="ot-protoCanvas" height="130"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="statusbar">
+  <div class="si"><div class="sd sd-g"></div>NetFlow Active</div>
+  <div class="si"><div class="sd sd-b"></div>ISE pxGrid</div>
+  <div class="si"><div class="sd sd-b"></div>Catalyst Center API</div>
+  <div class="si"><div class="sd sd-g"></div>Umbrella DNS Feed</div>
+  <div class="si"><div class="sd sd-o"></div>MDT Stream</div>
+  <div class="sr">NetDNA v0.1 · Simulator Mode · <strong>Cisco-Native</strong></div>
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script src="/assets/js/ot-page.js"></script>
+</body>
+</html>

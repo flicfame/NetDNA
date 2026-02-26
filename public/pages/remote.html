@@ -1,0 +1,356 @@
+i hsvr creaer <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — Remote & Wireless</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/shared.css">
+</head>
+<body>
+
+<div id="navMount"></div>
+
+<div class="subhdr">
+  <div class="breadcrumb">
+    <span>NetDNA</span><span>›</span>
+    <span class="cur">Remote & Wireless</span>
+  </div>
+  <div style="display:flex;gap:6px;border-left:1px solid var(--border);padding-left:10px;">
+    <a class="btn btn-sec" href="/dashboard" style="font-size:11px">Overview</a>
+    <a class="btn btn-sec" href="/topology" style="font-size:11px">Topology</a>
+    <a class="btn btn-sec" href="/remote" style="font-size:11px;background:var(--cisco-blue);color:#fff;border-color:var(--cisco-blue)">Remote &amp; Wireless</a>
+    <a class="btn btn-sec" href="/ot" style="font-size:11px">OT Networks</a>
+    <a class="btn btn-sec" href="/heatmap" style="font-size:11px">Heatmap</a>
+    <a class="btn btn-sec" href="/prediction" style="font-size:11px">Prediction</a>
+    <a class="btn btn-sec" href="/quarantine" style="font-size:11px">ISE Response</a>
+  </div>
+</div>
+
+<div class="page">
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">VPN Sessions</div>
+        <div class="kpi-ico" style="background:var(--cisco-bg)">🔒</div></div>
+      <div class="kpi-val kv-blue" id="rk-vpn">—</div>
+      <div class="kpi-delta" style="color:var(--g50)">active AnyConnect sessions</div>
+      <div class="kpi-track"><div class="kpi-fill" id="rk-vpnBar" style="background:var(--cisco-blue)"></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Flagged Sessions</div>
+        <div class="kpi-ico" style="background:var(--red-lt)">⚠</div></div>
+      <div class="kpi-val kv-red" id="rk-flag">—</div>
+      <div class="kpi-delta" style="color:var(--g50)">anomalous VPN / wireless</div>
+      <div class="kpi-track"><div class="kpi-fill" id="rk-flagBar" style="background:var(--red)"></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Wireless Clients</div>
+        <div class="kpi-ico" style="background:var(--cisco-bg)">📶</div></div>
+      <div class="kpi-val kv-blue" id="rk-wifi">—</div>
+      <div class="kpi-delta" style="color:var(--g50)">connected · all SSIDs</div>
+      <div class="kpi-track"><div class="kpi-fill" id="rk-wifiBar" style="background:var(--cisco-blue)"></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Rogue APs</div>
+        <div class="kpi-ico" style="background:var(--red-lt)">📡</div></div>
+      <div class="kpi-val kv-red" id="rk-rogue">—</div>
+      <div class="kpi-delta" style="color:var(--g50)">not in Catalyst Center</div>
+      <div class="kpi-track"><div class="kpi-fill" id="rk-rogueBar" style="background:var(--red)"></div></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="left-col">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--cisco-blue)"></div>Active VPN Sessions — Cisco AnyConnect</div>
+          <div style="display:flex;gap:6px">
+            <span class="cbadge blue">ASA-EDGE-01</span>
+            <span class="cbadge" id="vpnCount">Loading...</span>
+          </div>
+        </div>
+        <table>
+          <thead><tr>
+            <th>User</th><th>Location</th><th>Tunnel IP</th>
+            <th>Auth</th><th>Data Out</th><th>Duration</th><th>Risk</th>
+          </tr></thead>
+          <tbody id="vpnTable">
+            <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--g50)">Loading VPN sessions...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--cisco-blue)"></div>Wireless Clients — Catalyst 9800 WLC</div>
+          <span class="cbadge" id="wifiCount">Loading...</span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Device</th><th>AP Location</th><th>SSID</th>
+            <th>Signal</th><th>Data</th><th>VLAN</th><th>Risk</th>
+          </tr></thead>
+          <tbody id="wifiTable">
+            <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--g50)">Loading wireless clients...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--cisco-blue)"></div>VPN Origin Map</div>
+          <span class="cbadge blue">GeoIP</span>
+        </div>
+        <div style="padding:14px 18px">
+          <canvas id="worldCanvas" height="160"></canvas>
+        </div>
+        <div id="countryList" style="border-top:1px solid var(--g10)">
+          <div style="padding:14px 18px;color:var(--g50);font-size:12px">Loading...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title"><div class="cdot" style="background:var(--green)"></div>Access Point Inventory</div>
+          <span class="cbadge" id="apCount">—</span>
+        </div>
+        <div id="apList">
+          <div style="padding:14px 18px;color:var(--g50);font-size:12px">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="statusbar">
+  <div class="si"><div class="sd sd-g"></div>NetFlow Active</div>
+  <div class="si"><div class="sd sd-b"></div>ISE pxGrid</div>
+  <div class="si"><div class="sd sd-b"></div>Catalyst Center API</div>
+  <div class="si"><div class="sd sd-g"></div>Umbrella DNS Feed</div>
+  <div class="si"><div class="sd sd-o"></div>MDT Stream</div>
+  <div class="sr">NetDNA v0.1 · Simulator Mode · <strong>Cisco-Native</strong></div>
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script>
+if (!Auth.guard()) throw 0;
+document.getElementById('navMount').innerHTML = renderNav('Overview');
+document.head.insertAdjacentHTML('beforeend', `<style>${NAV_CSS}</style>`);
+
+function countryFlag(code) {
+  const flags = {GB:'🇬🇧',IE:'🇮🇪',US:'🇺🇸',DE:'🇩🇪',RU:'🇷🇺',CN:'🇨🇳',NG:'🇳🇬',BR:'🇧🇷'};
+  return flags[code] || '🌍';
+}
+
+async function loadRemoteWireless() {
+  await Promise.all([loadVPNSessions(), loadWirelessClients(), loadRemoteStats()]);
+  drawWorldMap();
+}
+
+async function loadRemoteStats() {
+  try {
+    const [vpnStats, wifiStats] = await Promise.all([
+      API.get('/remote/stats'),
+      API.get('/wireless/stats'),
+    ]);
+    document.getElementById('rk-vpn').textContent   = vpnStats.active_sessions || 0;
+    document.getElementById('rk-vpnBar').style.width = Math.min((vpnStats.active_sessions||0)/10*100,100)+'%';
+    document.getElementById('rk-flag').textContent   = (vpnStats.flagged_sessions||0) + (wifiStats.flagged_clients||0);
+    document.getElementById('rk-flagBar').style.width= Math.min(((vpnStats.flagged_sessions||0)+(wifiStats.flagged_clients||0))/5*100,100)+'%';
+    document.getElementById('rk-wifi').textContent   = wifiStats.connected_clients || 0;
+    document.getElementById('rk-wifiBar').style.width= Math.min((wifiStats.connected_clients||0)/15*100,100)+'%';
+    document.getElementById('rk-rogue').textContent  = wifiStats.rogue_aps || 0;
+    document.getElementById('rk-rogueBar').style.width= Math.min((wifiStats.rogue_aps||0)*50,100)+'%';
+
+    const countries = vpnStats.country_map || [];
+    document.getElementById('countryList').innerHTML = countries.length
+      ? countries.map(c => `
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid var(--g10)">
+          <span style="font-size:18px">${c.flag||'🌍'}</span>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600">${c.country_name}</div>
+            <div style="font-size:11px;color:var(--g50)">${c.sessions} session${c.sessions>1?'s':''}</div>
+          </div>
+          ${c.risk_flag ? `<span class="sev sc" style="font-size:9px">${c.risk_flag.replace(/_/g,' ')}</span>` : ''}
+          <span class="sev ${c.risk==='high'?'sc':c.risk==='medium'?'sh':'sl'}" style="font-size:9px">${c.risk||'low'}</span>
+        </div>`).join('')
+      : '<div style="padding:14px 18px;color:var(--g50);font-size:12px">No active VPN sessions</div>';
+
+    const aps = wifiStats.access_points || [];
+    document.getElementById('apCount').textContent = `${aps.length} APs`;
+    document.getElementById('apList').innerHTML = aps.map(ap => `
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid var(--g10)">
+        <span style="font-size:14px">${ap.is_rogue ? '🚨' : '📶'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;${ap.is_rogue?'color:var(--red)':''}">${ap.ap_name}${ap.is_rogue?' ⚠ ROGUE':''}</div>
+          <div style="font-size:11px;color:var(--g50);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ap.location||'—'} · ${ap.ssid}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:13px;font-weight:700;color:var(--cisco-blue)">${ap.client_count||0}</div>
+          <div style="font-size:10px;color:var(--g50)">clients</div>
+        </div>
+      </div>`).join('');
+
+  } catch(e) { console.error('Remote stats error:', e); }
+}
+
+async function loadVPNSessions() {
+  try {
+    const data = await API.get('/remote/sessions?status=active&limit=30');
+    const sessions = data.sessions || [];
+    document.getElementById('vpnCount').textContent = `${sessions.length} Active`;
+
+    const riskFlag = s => {
+      if (!s.risk_flag) return '';
+      const labels = {
+        IMPOSSIBLE_TRAVEL: ['sc','Impossible Travel'],
+        CONCURRENT_SESSION:['sh','Concurrent Session'],
+      };
+      const [cls, label] = labels[s.risk_flag] || ['sc', s.risk_flag];
+      return `<span class="sev ${cls}" style="font-size:9px">${label}</span>`;
+    };
+
+    document.getElementById('vpnTable').innerHTML = sessions.length
+      ? sessions.map(s => `
+        <tr style="${s.risk_flag?'background:rgba(226,35,26,.03)':''}">
+          <td>
+            <div style="font-weight:600">${s.username}</div>
+            <div style="font-size:11px;color:var(--g50)">${s.tunnel_ip}</div>
+          </td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:16px">${countryFlag(s.country_code)}</span>
+              <div>
+                <div style="font-size:12px;font-weight:500">${s.city||s.country_name}</div>
+                <div style="font-size:11px;color:var(--g50)">${s.country_name}</div>
+              </div>
+            </div>
+          </td>
+          <td style="font-family:monospace;font-size:11px;color:var(--g70)">${s.public_ip}</td>
+          <td style="font-size:11px">${s.auth_method||'EAP-TLS'}</td>
+          <td style="font-size:12px">${formatBytes(s.bytes_out)}</td>
+          <td style="font-size:12px;color:var(--g50)">${s.duration_mins||0}m</td>
+          <td>${riskFlag(s) || '<span style="font-size:11px;color:var(--green)">✓ Clean</span>'}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--g50)">No active VPN sessions</td></tr>';
+  } catch(e) { console.error('VPN error:', e); }
+}
+
+async function loadWirelessClients() {
+  try {
+    const data = await API.get('/wireless/clients?status=connected&limit=30');
+    const clients = data.clients || [];
+    document.getElementById('wifiCount').textContent = `${clients.length} Connected`;
+
+    const signalBar = sig => {
+      const pct = Math.max(0, Math.min(100, ((sig + 100) / 60) * 100));
+      const col = pct > 60 ? 'var(--green)' : pct > 30 ? 'var(--orange)' : 'var(--red)';
+      return `<div style="display:flex;align-items:center;gap:6px">
+        <div style="width:40px;height:4px;background:var(--g10);border-radius:2px">
+          <div style="width:${pct}%;height:100%;background:${col};border-radius:2px"></div>
+        </div>
+        <span style="font-size:10px;color:var(--g50)">${sig} dBm</span>
+      </div>`;
+    };
+
+    document.getElementById('wifiTable').innerHTML = clients.length
+      ? clients.map(cl => `
+        <tr style="${cl.risk_flag?'background:rgba(226,35,26,.03)':''}">
+          <td>
+            <div style="font-weight:600">${cl.username||'Unknown'}</div>
+            <div style="font-size:11px;color:var(--g50)">${cl.device_type||'—'} · ${cl.os_type||'—'}</div>
+          </td>
+          <td>
+            <div style="font-size:12px;font-weight:500">${cl.location||cl.ap_name}</div>
+            <div style="font-size:11px;color:var(--g50)">${cl.ap_name}</div>
+          </td>
+          <td>
+            <span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:3px;
+              background:${cl.ssid==='CORP-WIFI'?'var(--cisco-bg)':'var(--g10)'};
+              color:${cl.ssid==='CORP-WIFI'?'var(--cisco-dk)':'var(--g70)'}">
+              ${cl.ssid}
+            </span>
+          </td>
+          <td>${signalBar(cl.signal_strength||(-65))}</td>
+          <td style="font-size:12px">${formatBytes((cl.bytes_in||0)+(cl.bytes_out||0))}</td>
+          <td style="font-size:12px">VLAN-${cl.vlan_id||'?'}</td>
+          <td>${cl.risk_flag
+            ? `<span class="sev ${cl.risk_flag==='ROGUE_AP'?'sc':cl.risk_flag==='VLAN_HOP_ATTEMPT'?'sh':'sm'}" style="font-size:9px">${cl.risk_flag.replace(/_/g,' ')}</span>`
+            : '<span style="font-size:11px;color:var(--green)">✓ Clean</span>'}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--g50)">No wireless clients connected</td></tr>';
+  } catch(e) { console.error('Wireless error:', e); }
+}
+
+function drawWorldMap() {
+  const cv = document.getElementById('worldCanvas');
+  if (!cv) return;
+  cv.width = cv.offsetWidth;
+  const ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#F5F6F8';
+  ctx.fillRect(0,0,W,H);
+  const regions = [
+    {x:.08,y:.18,w:.12,h:.55,col:'#DDE1E7'},
+    {x:.11,y:.55,w:.08,h:.25,col:'#DDE1E7'},
+    {x:.42,y:.15,w:.15,h:.45,col:'#DDE1E7'},
+    {x:.38,y:.15,w:.06,h:.30,col:'#DDE1E7'},
+    {x:.55,y:.10,w:.22,h:.45,col:'#DDE1E7'},
+    {x:.44,y:.48,w:.12,h:.35,col:'#DDE1E7'},
+    {x:.78,y:.55,w:.12,h:.25,col:'#DDE1E7'},
+  ];
+  regions.forEach(r => {
+    ctx.fillStyle = r.col;
+    ctx.beginPath();
+    ctx.roundRect(r.x*W, r.y*H, r.w*W, r.h*H, 4);
+    ctx.fill();
+  });
+  const locations = {
+    GB:{x:.44,y:.22,col:'var(--cisco-blue)',risk:false},
+    IE:{x:.42,y:.22,col:'var(--cisco-blue)',risk:false},
+    US:{x:.18,y:.30,col:'var(--orange)',risk:false},
+    DE:{x:.48,y:.23,col:'var(--cisco-blue)',risk:false},
+    RU:{x:.62,y:.18,col:'#E2231A',risk:true},
+    CN:{x:.72,y:.28,col:'#E2231A',risk:true},
+    NG:{x:.46,y:.52,col:'var(--orange)',risk:false},
+    BR:{x:.26,y:.60,col:'var(--orange)',risk:false},
+  };
+  API.get('/remote/map').then(data => {
+    const active = (data.locations||[]).map(l => l.country_code);
+    Object.entries(locations).forEach(([code, loc]) => {
+      if (!active.includes(code)) return;
+      const x = loc.x * W, y = loc.y * H;
+      ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI*2);
+      ctx.fillStyle = loc.col.startsWith('#') ? loc.col+'25' : 'rgba(4,159,217,.15)';
+      ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2);
+      ctx.fillStyle = loc.col.startsWith('#') ? loc.col : '#049FD9';
+      ctx.fill();
+      ctx.font = '600 9px Inter,sans-serif';
+      ctx.fillStyle = '#58585B';
+      ctx.textAlign = 'center';
+      ctx.fillText(code, x, y+16);
+    });
+    data.locations?.filter(l => l.risk_flag).forEach(l => {
+      if (!locations[l.country_code]) return;
+      const src = locations['GB'], dst = locations[l.country_code];
+      if (!src || !dst) return;
+      ctx.beginPath();
+      ctx.moveTo(src.x*W, src.y*H);
+      ctx.lineTo(dst.x*W, dst.y*H);
+      ctx.strokeStyle = 'rgba(226,35,26,.4)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4,3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+  }).catch(() => {});
+}
+
+loadRemoteWireless();
+setInterval(loadRemoteWireless, 8000);
+</script>
+</body>
+</html>

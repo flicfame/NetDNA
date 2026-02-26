@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — Shim Fleet Devices</title>
+<meta name="description" content="View and manage NAC shim devices deployed across OT network segments. Monitor status, change enforcement modes, and approve pending shims.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/shared.css">
+<style>
+.kpi-row-6{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;}
+@media(max-width:1200px){.kpi-row-6{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:700px){.kpi-row-6{grid-template-columns:repeat(2,1fr);}}
+
+.pending-banner{margin:0 0 14px;background:#fff;border:1px solid #f5c0be;
+  border-left:4px solid var(--orange);border-radius:var(--r);
+  padding:12px 16px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);}
+.pending-banner .pb-icon{font-size:18px;flex-shrink:0;color:var(--orange);}
+.pending-banner .pb-body{flex:1;}
+.pending-banner .pb-title{font-size:13px;font-weight:600;color:var(--orange);margin-bottom:2px;}
+.pending-banner .pb-desc{font-size:12px;color:var(--g70);}
+
+.mode-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;
+  border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;}
+.mode-monitor{background:var(--cisco-bg);color:var(--cisco-dk);}
+.mode-enforce{background:var(--green-lt);color:var(--green);}
+.mode-contain{background:var(--red-lt);color:var(--red);animation:containPulse 2s infinite;}
+@keyframes containPulse{0%,100%{box-shadow:0 0 0 0 rgba(226,35,26,.3)}50%{box-shadow:0 0 0 3px rgba(226,35,26,0)}}
+
+.status-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;
+  border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;}
+.status-online{background:var(--green-lt);color:var(--green);}
+.status-pending{background:var(--orange-lt);color:var(--orange);}
+.status-contain{background:var(--red-lt);color:var(--red);}
+.status-offline{background:var(--g10);color:var(--g50);}
+
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;
+  display:none;justify-content:flex-end;}
+.drawer-overlay.open{display:flex;}
+.drawer{width:680px;max-width:95vw;background:#fff;height:100%;overflow:hidden;
+  display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.15);
+  animation:slideIn .25s ease;}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.drawer-hdr{background:var(--cisco-dk);padding:16px 24px;
+  display:flex;align-items:flex-start;justify-content:space-between;}
+.drawer-title{color:#fff;font-size:15px;font-weight:700;}
+.drawer-sub{color:rgba(255,255,255,.55);font-size:12px;margin-top:2px;}
+.drawer-close{background:none;border:none;color:rgba(255,255,255,.7);
+  font-size:20px;cursor:pointer;padding:2px 6px;}
+.drawer-body{overflow-y:auto;flex:1;}
+.drawer-section{padding:18px 24px;border-bottom:1px solid var(--g10);}
+.drawer-section:last-child{border-bottom:none;}
+.ds-title{font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--g50);margin-bottom:12px;}
+
+.confirm-modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;
+  display:none;align-items:center;justify-content:center;padding:24px;}
+.confirm-modal.open{display:flex;}
+.confirm-box{background:#fff;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.2);
+  width:100%;max-width:480px;padding:24px;animation:mIn .25s ease;}
+.confirm-title{font-size:15px;font-weight:700;margin-bottom:12px;}
+.confirm-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+
+.warn-box{background:var(--orange-lt);border:1px solid rgba(247,129,10,.2);
+  border-radius:var(--r);padding:12px;color:var(--orange);font-size:13px;margin-bottom:14px;}
+.danger-box{background:var(--red-lt);border:1px solid rgba(226,35,26,.2);
+  border-radius:var(--r);padding:12px;color:var(--red);font-size:13px;margin-bottom:14px;}
+
+.form-group{margin-bottom:14px;}
+.form-label{font-size:12px;color:var(--g50);margin-bottom:4px;display:block;font-weight:600;}
+.form-input{width:100%;padding:8px 12px;background:var(--g05);
+  border:1px solid var(--border);border-radius:var(--r);
+  font-family:var(--font);font-size:13px;color:var(--g90);}
+.form-input:focus{outline:none;border-color:var(--cisco-blue);}
+
+.health-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.health-item{background:var(--g05);border-radius:5px;padding:10px 12px;}
+.hi-lbl{font-size:10px;color:var(--g50);font-weight:600;text-transform:uppercase;
+  letter-spacing:.4px;margin-bottom:3px;}
+.hi-val{font-size:13px;font-weight:600;}
+
+td .btn{font-size:11px;padding:4px 10px;}
+</style>
+</head>
+<body>
+
+<div id="navMount"></div>
+
+<div class="subhdr">
+  <div class="breadcrumb">
+    <span>NetDNA</span><span>›</span>
+    <span>Edge NAC</span><span>›</span>
+    <span class="cur">Shim Fleet</span>
+  </div>
+  <button class="btn btn-sec" data-testid="button-refresh" onclick="loadAll()">Refresh</button>
+</div>
+
+<div class="page" id="mainPage">
+  <div id="pendingBanner" style="display:none"></div>
+
+  <div class="kpi-row-6">
+    <div class="kpi-card" data-testid="kpi-total">
+      <div class="kpi-top"><div class="kpi-lbl">Total Shims</div>
+        <div class="kpi-ico" style="background:var(--cisco-bg)">&#9645;</div></div>
+      <div class="kpi-val kv-blue" id="kTotal" data-testid="text-total-shims">--</div>
+      <div class="kpi-delta" style="color:var(--g50)">deployed</div>
+    </div>
+    <div class="kpi-card" data-testid="kpi-online">
+      <div class="kpi-top"><div class="kpi-lbl">Online</div>
+        <div class="kpi-ico" style="background:var(--green-lt)">&#9679;</div></div>
+      <div class="kpi-val kv-green" id="kOnline" data-testid="text-online-shims">--</div>
+      <div class="kpi-delta" style="color:var(--g50)">heartbeat active</div>
+    </div>
+    <div class="kpi-card" data-testid="kpi-pending">
+      <div class="kpi-top"><div class="kpi-lbl">Pending</div>
+        <div class="kpi-ico" style="background:var(--orange-lt)">&#9711;</div></div>
+      <div class="kpi-val kv-orange" id="kPending" data-testid="text-pending-shims">--</div>
+      <div class="kpi-delta" style="color:var(--g50)">awaiting approval</div>
+    </div>
+    <div class="kpi-card" data-testid="kpi-contained">
+      <div class="kpi-top"><div class="kpi-lbl">Contained</div>
+        <div class="kpi-ico" style="background:var(--red-lt)">&#9940;</div></div>
+      <div class="kpi-val kv-red" id="kContained" data-testid="text-contained-shims">--</div>
+      <div class="kpi-delta" style="color:var(--g50)">restricted</div>
+    </div>
+    <div class="kpi-card" data-testid="kpi-violations">
+      <div class="kpi-top"><div class="kpi-lbl">Violations 24h</div>
+        <div class="kpi-ico" style="background:var(--red-lt)">&#9888;</div></div>
+      <div class="kpi-val kv-red" id="kViolations" data-testid="text-violations-24h">--</div>
+      <div class="kpi-delta" style="color:var(--g50)">blocked / flagged</div>
+    </div>
+    <div class="kpi-card" data-testid="kpi-shadow">
+      <div class="kpi-top"><div class="kpi-lbl">Shadow Events 24h</div>
+        <div class="kpi-ico" style="background:var(--orange-lt)">&#9673;</div></div>
+      <div class="kpi-val kv-orange" id="kShadow" data-testid="text-shadow-24h">--</div>
+      <div class="kpi-delta" style="color:var(--g50)">would_block in monitor</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title"><div class="cdot" style="background:var(--cisco-blue)"></div>Shim Devices</div>
+      <span class="cbadge blue" id="shimCount" data-testid="text-shim-count">0 shims</span>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Shim ID</th><th>Site / Zone</th><th>Status</th><th>Mode</th>
+        <th>Template</th><th>Downstream</th><th>Violations 24h</th>
+        <th>Firmware</th><th>Last Heartbeat</th><th>Actions</th>
+      </tr></thead>
+      <tbody id="shimsTableBody" data-testid="table-shims">
+        <tr><td colspan="10" style="text-align:center;padding:30px;color:var(--g50)">Loading shim fleet...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="detailDrawer" onclick="if(event.target===this)closeDrawer()">
+  <div class="drawer">
+    <div class="drawer-hdr">
+      <div>
+        <div class="drawer-title" id="drawerTitle" data-testid="text-drawer-title">Shim Detail</div>
+        <div class="drawer-sub" id="drawerSub" data-testid="text-drawer-sub"></div>
+      </div>
+      <button class="drawer-close" onclick="closeDrawer()" data-testid="button-close-drawer">&times;</button>
+    </div>
+    <div class="inner-tabs" id="drawerTabs">
+      <button class="itab active" onclick="switchDrawerTab(this,'dtab-overview')" data-testid="tab-overview">Overview</button>
+      <button class="itab" onclick="switchDrawerTab(this,'dtab-violations')" data-testid="tab-violations">Violations</button>
+      <button class="itab" onclick="switchDrawerTab(this,'dtab-policy')" data-testid="tab-policy">Policy</button>
+      <button class="itab" onclick="switchDrawerTab(this,'dtab-downstream')" data-testid="tab-downstream">Downstream</button>
+      <button class="itab" onclick="switchDrawerTab(this,'dtab-health')" data-testid="tab-health">Health</button>
+    </div>
+    <div class="drawer-body">
+      <div id="dtab-overview" class="tab-pane active"></div>
+      <div id="dtab-violations" class="tab-pane"></div>
+      <div id="dtab-policy" class="tab-pane"></div>
+      <div id="dtab-downstream" class="tab-pane"></div>
+      <div id="dtab-health" class="tab-pane"></div>
+    </div>
+  </div>
+</div>
+
+<div class="confirm-modal" id="approveModal" onclick="if(event.target===this)closeConfirm('approveModal')">
+  <div class="confirm-box">
+    <div class="confirm-title">Approve Shim</div>
+    <p style="font-size:13px;color:var(--g70);margin-bottom:14px">
+      Approving this shim allows it to receive policy and send telemetry.
+      It will start in <strong>Monitor mode</strong> — no traffic will be blocked.
+    </p>
+    <div id="approveInfo" style="background:var(--g05);padding:12px;border-radius:5px;font-size:12px;font-family:monospace;margin-bottom:14px;white-space:pre-line" data-testid="text-approve-info"></div>
+    <div class="confirm-footer">
+      <button class="btn btn-sec" onclick="closeConfirm('approveModal')" data-testid="button-cancel-approve">Cancel</button>
+      <button class="btn btn-pri" onclick="confirmApprove()" data-testid="button-confirm-approve">Approve — Start Monitor Mode</button>
+    </div>
+  </div>
+</div>
+
+<div class="confirm-modal" id="modeModal" onclick="if(event.target===this)closeConfirm('modeModal')">
+  <div class="confirm-box">
+    <div class="confirm-title" id="modeModalTitle">Change Mode</div>
+    <div id="modeModalWarn"></div>
+    <div id="containFields" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Safe IP (only allowed host in Contain mode)</label>
+        <input class="form-input" id="containSafeIp" placeholder="192.168.102.11" data-testid="input-contain-ip">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Safe Port</label>
+        <input class="form-input" id="containSafePort" placeholder="502" data-testid="input-contain-port">
+      </div>
+    </div>
+    <div id="modeImpactSummary" style="margin-bottom:14px"></div>
+    <div class="confirm-footer">
+      <button class="btn btn-sec" onclick="closeConfirm('modeModal')" data-testid="button-cancel-mode">Cancel</button>
+      <button class="btn btn-red" id="modeConfirmBtn" onclick="confirmModeChange()" data-testid="button-confirm-mode">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="statusbar">
+  <div class="si"><div class="sd sd-g"></div>Edge NAC Active</div>
+  <div class="si"><div class="sd sd-b"></div>Shims: <span id="sbShims" data-testid="text-sb-shims">--</span></div>
+  <div class="si"><div class="sd sd-b"></div>Violations 24h: <span id="sbViol" data-testid="text-sb-violations">--</span></div>
+  <div class="sr">NetDNA v0.1 · Simulator Mode · <strong>Cisco-Native</strong></div>
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script>
+if (!Auth.guard()) throw new Error('Not authenticated');
+document.getElementById('navMount').innerHTML = renderNav('Shim Fleet');
+const style = document.createElement('style');
+style.textContent = NAV_CSS;
+document.head.appendChild(style);
+
+let pendingApproveShimId = null;
+let pendingModeShimId = null;
+let pendingModeValue = null;
+let shimListCache = [];
+
+function modeBadge(mode) {
+  return `<span class="mode-badge mode-${mode}">${mode}</span>`;
+}
+function statusBadge(s) {
+  return `<span class="status-badge status-${s}">${s}</span>`;
+}
+function fmtHeartbeat(ts) {
+  if (!ts) return '<span style="color:var(--g50)">never</span>';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return '<span style="color:var(--g50)">--</span>';
+  return timeAgo(ts);
+}
+
+async function loadAll() {
+  try {
+    const [shimList, stats] = await Promise.all([
+      API.get('/shims'),
+      API.get('/shims/stats'),
+    ]);
+    shimListCache = shimList;
+
+    document.getElementById('kTotal').textContent = stats.shims_total;
+    document.getElementById('kOnline').textContent = stats.shims_online;
+    document.getElementById('kPending').textContent = stats.shims_pending;
+    document.getElementById('kContained').textContent = stats.shims_contained;
+    document.getElementById('kViolations').textContent = stats.violations_24h;
+    document.getElementById('kShadow').textContent = stats.shadow_events_24h;
+    document.getElementById('shimCount').textContent = `${shimList.length} shims`;
+    document.getElementById('sbShims').textContent = `${stats.shims_online}/${stats.shims_total} online`;
+    document.getElementById('sbViol').textContent = stats.violations_24h;
+
+    const banner = document.getElementById('pendingBanner');
+    if (stats.shims_pending > 0) {
+      banner.style.display = '';
+      banner.innerHTML = `<div class="pending-banner">
+        <div class="pb-icon">&#9888;</div>
+        <div class="pb-body">
+          <div class="pb-title">${stats.shims_pending} Shim${stats.shims_pending > 1 ? 's' : ''} Pending Approval</div>
+          <div class="pb-desc">New shim devices have registered and are awaiting admin approval before they can receive policy.</div>
+        </div>
+        <button class="btn btn-pri" onclick="scrollToPending()" data-testid="button-scroll-pending">Review</button>
+      </div>`;
+    } else {
+      banner.style.display = 'none';
+    }
+
+    renderTable(shimList);
+  } catch (e) {
+    toast('Failed to load shim data: ' + e.message, 'error');
+  }
+}
+
+function renderTable(shimList) {
+  const tbody = document.getElementById('shimsTableBody');
+  if (!shimList.length) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--g50)">
+      No shims registered. Deploy a shim device to see it here.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = shimList.map(s => {
+    let actions = '';
+    if (s.status === 'pending') {
+      actions = `<button class="btn btn-pri" onclick="openApprove('${s.shim_id}','${esc(s.site_id)}','${esc(s.firmware_version)}')" data-testid="button-approve-${s.shim_id}">Approve</button>`;
+    } else {
+      actions = `<button class="btn btn-sec" onclick="openModeChange('${s.shim_id}','${s.mode}')" data-testid="button-mode-${s.shim_id}">Mode</button>`;
+      if (s.status === 'contain') {
+        actions += ` <button class="btn btn-sec" style="color:var(--orange)" onclick="clearContain('${s.shim_id}')" data-testid="button-clear-${s.shim_id}">Clear</button>`;
+      }
+    }
+    actions += ` <button class="btn btn-sec" onclick="openDetail('${s.shim_id}')" data-testid="button-detail-${s.shim_id}">Detail</button>`;
+
+    return `<tr data-testid="row-shim-${s.shim_id}" class="${s.status === 'pending' ? 'pending-row' : ''}">
+      <td style="font-size:12px;font-weight:600;color:var(--cisco-dk)" data-testid="text-shimid-${s.shim_id}">${s.shim_id}</td>
+      <td>${s.site_id || '--'}<br><span style="font-size:11px;color:var(--g50)">${s.zone || ''}</span></td>
+      <td>${statusBadge(s.status)}</td>
+      <td>${modeBadge(s.mode)}</td>
+      <td style="font-size:12px">${s.template_name || '--'}</td>
+      <td style="font-weight:600">${s.downstream_count}</td>
+      <td style="font-weight:600;${s.violations_24h > 0 ? 'color:var(--red)' : ''}">${s.violations_24h}</td>
+      <td style="font-size:11px;color:var(--g70)">${s.firmware_version || '--'}</td>
+      <td style="font-size:12px;color:var(--g50)">${fmtHeartbeat(s.last_heartbeat)}</td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap">${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+function esc(v) { return (v || '').replace(/'/g, "\\'"); }
+
+function scrollToPending() {
+  const row = document.querySelector('.pending-row');
+  if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function openApprove(shimId, site, fw) {
+  pendingApproveShimId = shimId;
+  document.getElementById('approveInfo').textContent =
+    `Shim ID:  ${shimId}\nSite:     ${site || '--'}\nFirmware: ${fw || '--'}`;
+  document.getElementById('approveModal').classList.add('open');
+}
+
+async function confirmApprove() {
+  try {
+    await API.post(`/shims/${pendingApproveShimId}/approve`, { approved_by: Auth.getUser().username || 'admin' });
+    toast(`Shim ${pendingApproveShimId} approved — Monitor mode active`, 'success');
+    closeConfirm('approveModal');
+    loadAll();
+  } catch (e) {
+    toast('Approve failed: ' + e.message, 'error');
+  }
+}
+
+function openModeChange(shimId, currentMode) {
+  pendingModeShimId = shimId;
+  const shim = shimListCache.find(s => s.shim_id === shimId);
+  const dsCount = shim ? shim.downstream_count : 0;
+  const viol24h = shim ? shim.violations_24h : 0;
+
+  const modes = ['monitor', 'enforce', 'contain'].filter(m => m !== currentMode);
+  const modeHtml = modes.map(m => {
+    const cls = m === 'contain' ? 'btn-red' : 'btn-pri';
+    return `<button class="btn ${cls}" style="margin-right:6px" onclick="selectMode('${shimId}','${m}')" data-testid="button-select-${m}">${m.charAt(0).toUpperCase() + m.slice(1)}</button>`;
+  }).join('');
+
+  document.getElementById('modeModalTitle').textContent = `Change Mode — ${shimId}`;
+  document.getElementById('modeModalWarn').innerHTML = `
+    <div style="font-size:13px;color:var(--g70);margin-bottom:14px">
+      Current mode: ${modeBadge(currentMode)}<br><br>
+      Select new mode: ${modeHtml}
+    </div>`;
+  document.getElementById('containFields').style.display = 'none';
+  document.getElementById('modeImpactSummary').innerHTML = `
+    <div style="font-size:12px;color:var(--g50);margin-top:8px">
+      Impact: ${dsCount} downstream device${dsCount !== 1 ? 's' : ''} · ${viol24h} violations in last 24h
+    </div>`;
+  document.getElementById('modeConfirmBtn').style.display = 'none';
+  document.getElementById('modeModal').classList.add('open');
+}
+
+function selectMode(shimId, mode) {
+  pendingModeShimId = shimId;
+  pendingModeValue = mode;
+
+  const warn = document.getElementById('modeModalWarn');
+  const containFields = document.getElementById('containFields');
+  const confirmBtn = document.getElementById('modeConfirmBtn');
+
+  if (mode === 'enforce') {
+    warn.innerHTML = `<div class="warn-box">Traffic matching deny rules will be <strong>DROPPED</strong>. Verify shadow feed before enabling enforce mode.</div>`;
+    containFields.style.display = 'none';
+    confirmBtn.textContent = 'Switch to ENFORCE';
+    confirmBtn.className = 'btn btn-pri';
+  } else if (mode === 'contain') {
+    warn.innerHTML = `<div class="danger-box"><strong>CONTAIN mode</strong> — device restricted to minimal safe set only. OT process may be interrupted.</div>`;
+    containFields.style.display = '';
+    confirmBtn.textContent = 'Switch to CONTAIN';
+    confirmBtn.className = 'btn btn-red';
+  } else {
+    warn.innerHTML = `<div style="color:var(--g70);font-size:13px;margin-bottom:12px">Switching to Monitor mode. No traffic will be blocked. Violations will be logged only.</div>`;
+    containFields.style.display = 'none';
+    confirmBtn.textContent = 'Switch to MONITOR';
+    confirmBtn.className = 'btn btn-pri';
+  }
+  confirmBtn.style.display = '';
+}
+
+async function confirmModeChange() {
+  try {
+    const body = { mode: pendingModeValue, actor: Auth.getUser().username || 'admin' };
+    if (pendingModeValue === 'contain') {
+      const ip = document.getElementById('containSafeIp').value.trim();
+      const port = parseInt(document.getElementById('containSafePort').value.trim());
+      if (!ip || !port) {
+        toast('Safe IP and port required for contain mode', 'error');
+        return;
+      }
+      body.contain_safe = [{ ip, port, proto: 'tcp' }];
+    }
+    await API.post(`/shims/${pendingModeShimId}/mode`, body);
+    toast(`Mode changed to ${pendingModeValue}`, 'success');
+    closeConfirm('modeModal');
+    loadAll();
+  } catch (e) {
+    toast('Mode change failed: ' + e.message, 'error');
+  }
+}
+
+async function clearContain(shimId) {
+  if (!confirm(`Clear contain mode for ${shimId}? It will return to enforce mode.`)) return;
+  try {
+    await API.post(`/shims/${shimId}/contain/clear`, { actor: Auth.getUser().username || 'admin' });
+    toast(`Contain cleared for ${shimId}`, 'success');
+    loadAll();
+  } catch (e) {
+    toast('Failed: ' + e.message, 'error');
+  }
+}
+
+function closeConfirm(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+async function openDetail(shimId) {
+  document.getElementById('drawerTitle').textContent = shimId;
+  document.getElementById('drawerSub').textContent = 'Loading...';
+  document.getElementById('dtab-overview').innerHTML = '<div style="padding:24px;text-align:center;color:var(--g50)">Loading...</div>';
+  document.getElementById('dtab-violations').innerHTML = '';
+  document.getElementById('dtab-policy').innerHTML = '';
+  document.getElementById('dtab-downstream').innerHTML = '';
+  document.getElementById('dtab-health').innerHTML = '';
+  document.getElementById('detailDrawer').classList.add('open');
+
+  document.querySelectorAll('#drawerTabs .itab').forEach((t, i) => {
+    t.classList.toggle('active', i === 0);
+  });
+  document.querySelectorAll('.drawer-body .tab-pane').forEach((p, i) => {
+    p.classList.toggle('active', i === 0);
+  });
+
+  try {
+    const detail = await API.get(`/shims/${shimId}`);
+    renderDrawer(detail);
+  } catch (e) {
+    document.getElementById('dtab-overview').innerHTML =
+      `<div style="padding:24px;color:var(--red)">Failed to load: ${e.message}</div>`;
+  }
+}
+
+function renderDrawer(d) {
+  document.getElementById('drawerSub').textContent =
+    `${d.site_id || '--'} / ${d.zone || '--'} · ${d.status} · ${d.mode}`;
+
+  document.getElementById('dtab-overview').innerHTML = `
+    <div class="drawer-section">
+      <div class="ds-title">Device Information</div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="di-lbl">Shim ID</div><div class="di-val">${d.shim_id}</div></div>
+        <div class="detail-item"><div class="di-lbl">Name</div><div class="di-val">${d.name || '--'}</div></div>
+        <div class="detail-item"><div class="di-lbl">Site</div><div class="di-val">${d.site_id || '--'}</div></div>
+        <div class="detail-item"><div class="di-lbl">Zone</div><div class="di-val">${d.zone || '--'}</div></div>
+        <div class="detail-item"><div class="di-lbl">Status</div><div class="di-val">${statusBadge(d.status)}</div></div>
+        <div class="detail-item"><div class="di-lbl">Mode</div><div class="di-val">${modeBadge(d.mode)}</div></div>
+        <div class="detail-item"><div class="di-lbl">Firmware</div><div class="di-val">${d.firmware_version || '--'}</div></div>
+        <div class="detail-item"><div class="di-lbl">Management IP</div><div class="di-val">${d.mgmt_ip || '--'}</div></div>
+        <div class="detail-item"><div class="di-lbl">Device Interface</div><div class="di-val">${d.iface_device || '--'}</div></div>
+        <div class="detail-item"><div class="di-lbl">Switch Interface</div><div class="di-val">${d.iface_switch || '--'}</div></div>
+        <div class="detail-item"><div class="di-lbl">Registered</div><div class="di-val">${d.registered_at ? timeAgo(d.registered_at) : '--'}</div></div>
+        <div class="detail-item"><div class="di-lbl">Last Heartbeat</div><div class="di-val">${fmtHeartbeat(d.last_heartbeat)}</div></div>
+        ${d.approved_at ? `<div class="detail-item"><div class="di-lbl">Approved</div><div class="di-val">${timeAgo(d.approved_at)} by ${d.approved_by || '--'}</div></div>` : ''}
+        ${d.cert_fingerprint ? `<div class="detail-item"><div class="di-lbl">Cert Fingerprint</div><div class="di-val" style="font-size:10px;word-break:break-all">${d.cert_fingerprint}</div></div>` : ''}
+      </div>
+    </div>
+    ${d.notes ? `<div class="drawer-section"><div class="ds-title">Notes</div><div style="font-size:13px;color:var(--g70)">${d.notes}</div></div>` : ''}
+  `;
+
+  const violations = d.violations || [];
+  document.getElementById('dtab-violations').innerHTML = `
+    <div class="drawer-section">
+      <div class="ds-title">Recent Violations (${violations.length})</div>
+      ${violations.length ? `<table>
+        <thead><tr><th>Time</th><th>Rule</th><th>Severity</th><th>Action</th><th>Source</th><th>Dest</th></tr></thead>
+        <tbody>${violations.map(v => `<tr>
+          <td style="font-size:11px;color:var(--g50)">${timeAgo(v.ts)}</td>
+          <td style="font-size:12px;font-weight:600">${v.rule_name}</td>
+          <td>${severityBadge(v.severity || 'medium')}</td>
+          <td><span class="mode-badge mode-${v.action === 'blocked' ? 'contain' : 'monitor'}">${v.action}</span></td>
+          <td style="font-size:11px">${v.src_ip || '--'}:${v.src_port || ''}</td>
+          <td style="font-size:11px">${v.dst_ip || '--'}:${v.dst_port || ''}</td>
+        </tr>`).join('')}</tbody>
+      </table>` : '<div style="text-align:center;padding:24px;color:var(--g50)">No violations recorded</div>'}
+    </div>`;
+
+  const pol = d.policy;
+  if (pol) {
+    let rules = [];
+    try { rules = JSON.parse(pol.rules_json || '[]'); } catch(e) {}
+    document.getElementById('dtab-policy').innerHTML = `
+      <div class="drawer-section">
+        <div class="ds-title">Assigned Policy</div>
+        <div class="detail-grid" style="margin-bottom:14px">
+          <div class="detail-item"><div class="di-lbl">Template</div><div class="di-val">${pol.display_name || pol.template_name}</div></div>
+          <div class="detail-item"><div class="di-lbl">Mode</div><div class="di-val">${modeBadge(pol.mode)}</div></div>
+          <div class="detail-item"><div class="di-lbl">Assigned By</div><div class="di-val">${pol.assigned_by || '--'}</div></div>
+          <div class="detail-item"><div class="di-lbl">Assigned At</div><div class="di-val">${pol.assigned_at ? timeAgo(pol.assigned_at) : '--'}</div></div>
+        </div>
+        ${pol.description ? `<div style="font-size:12px;color:var(--g70);margin-bottom:12px">${pol.description}</div>` : ''}
+        ${rules.length ? `<div class="ds-title" style="margin-top:14px">Rules (${rules.length})</div>
+        <table><thead><tr><th>Type</th><th>Description</th><th>MITRE</th></tr></thead>
+        <tbody>${rules.map(r => `<tr>
+          <td><span style="font-weight:700;color:${r.type === 'allow' ? 'var(--green)' : 'var(--red)'}">${(r.type || '').toUpperCase()}</span></td>
+          <td style="font-size:12px">${r.desc || '--'}</td>
+          <td>${r.mitre ? `<span class="mitre-tag">${r.mitre}</span>` : '--'}</td>
+        </tr>`).join('')}</tbody></table>` : ''}
+      </div>`;
+  } else {
+    document.getElementById('dtab-policy').innerHTML =
+      '<div class="drawer-section" style="text-align:center;padding:24px;color:var(--g50)">No policy assigned</div>';
+  }
+
+  const downstream = d.downstream || [];
+  document.getElementById('dtab-downstream').innerHTML = `
+    <div class="drawer-section">
+      <div class="ds-title">Downstream Devices (${downstream.length})</div>
+      ${downstream.length ? `<table>
+        <thead><tr><th>MAC</th><th>IP</th><th>Name</th><th>Type</th><th>Template</th><th>Last Seen</th></tr></thead>
+        <tbody>${downstream.map(dd => `<tr>
+          <td style="font-size:11px;font-weight:600;color:var(--cisco-dk)">${dd.mac}</td>
+          <td style="font-size:11px">${dd.ip || '--'}</td>
+          <td style="font-size:12px">${dd.device_name || '--'}</td>
+          <td style="font-size:12px">${dd.device_type || 'Unknown'}</td>
+          <td style="font-size:12px">${dd.template_name || '--'}</td>
+          <td style="font-size:11px;color:var(--g50)">${dd.last_seen ? timeAgo(dd.last_seen) : '--'}</td>
+        </tr>`).join('')}</tbody>
+      </table>` : '<div style="text-align:center;padding:24px;color:var(--g50)">No downstream devices detected</div>'}
+    </div>`;
+
+  const health = d.health_24h || [];
+  if (health.length) {
+    const latest = health[health.length - 1];
+    document.getElementById('dtab-health').innerHTML = `
+      <div class="drawer-section">
+        <div class="ds-title">Latest Health Metrics</div>
+        <div class="health-grid">
+          <div class="health-item"><div class="hi-lbl">CPU</div><div class="hi-val">${latest.cpu_pct != null ? latest.cpu_pct.toFixed(1) + '%' : '--'}</div></div>
+          <div class="health-item"><div class="hi-lbl">Memory</div><div class="hi-val">${latest.mem_used_mb != null ? latest.mem_used_mb + ' MB' : '--'}</div></div>
+          <div class="health-item"><div class="hi-lbl">Bridge Latency</div><div class="hi-val">${latest.bridge_latency_us != null ? latest.bridge_latency_us + ' us' : '--'}</div></div>
+          <div class="health-item"><div class="hi-lbl">Bridge Drops</div><div class="hi-val">${latest.bridge_drops != null ? latest.bridge_drops : '--'}</div></div>
+          <div class="health-item"><div class="hi-lbl">Uptime</div><div class="hi-val">${latest.uptime_sec != null ? formatUptime(latest.uptime_sec) : '--'}</div></div>
+          <div class="health-item"><div class="hi-lbl">Device Link</div><div class="hi-val ${latest.link_device_up ? 'ok' : 'bad'}">${latest.link_device_up ? 'UP' : 'DOWN'}</div></div>
+          <div class="health-item"><div class="hi-lbl">Switch Link</div><div class="hi-val ${latest.link_switch_up ? 'ok' : 'bad'}">${latest.link_switch_up ? 'UP' : 'DOWN'}</div></div>
+          <div class="health-item"><div class="hi-lbl">ISE Connected</div><div class="hi-val">${latest.ise_connected ? '<span class="ok">Yes</span>' : '<span class="warn">No</span>'}</div></div>
+          <div class="health-item"><div class="hi-lbl">Core Connected</div><div class="hi-val">${latest.core_connected ? '<span class="ok">Yes</span>' : '<span class="warn">No</span>'}</div></div>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <div class="ds-title">Health History (${health.length} samples)</div>
+        <table>
+          <thead><tr><th>Time</th><th>CPU</th><th>Mem</th><th>Latency</th><th>Drops</th><th>Links</th></tr></thead>
+          <tbody>${health.slice(-20).reverse().map(h => `<tr>
+            <td style="font-size:11px;color:var(--g50)">${timeAgo(h.ts)}</td>
+            <td>${h.cpu_pct != null ? h.cpu_pct.toFixed(1) + '%' : '--'}</td>
+            <td>${h.mem_used_mb != null ? h.mem_used_mb + 'MB' : '--'}</td>
+            <td>${h.bridge_latency_us != null ? h.bridge_latency_us + 'us' : '--'}</td>
+            <td>${h.bridge_drops != null ? h.bridge_drops : '--'}</td>
+            <td>${h.link_device_up ? '<span class="ok">D</span>' : '<span class="bad">D</span>'} ${h.link_switch_up ? '<span class="ok">S</span>' : '<span class="bad">S</span>'}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>`;
+  } else {
+    document.getElementById('dtab-health').innerHTML =
+      '<div class="drawer-section" style="text-align:center;padding:24px;color:var(--g50)">No health data available</div>';
+  }
+}
+
+function formatUptime(sec) {
+  if (sec < 3600) return Math.floor(sec / 60) + 'm';
+  if (sec < 86400) return Math.floor(sec / 3600) + 'h ' + Math.floor((sec % 3600) / 60) + 'm';
+  return Math.floor(sec / 86400) + 'd ' + Math.floor((sec % 86400) / 3600) + 'h';
+}
+
+function closeDrawer() {
+  document.getElementById('detailDrawer').classList.remove('open');
+}
+
+function switchDrawerTab(btn, tabId) {
+  document.querySelectorAll('#drawerTabs .itab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.drawer-body .tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+}
+
+loadAll();
+setInterval(loadAll, 30000);
+</script>
+</body>
+</html>

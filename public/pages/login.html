@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — Sign In</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cisco-blue:#049FD9; --cisco-dk:#004BAF; --cisco-md:#097DBC;
+  --g90:#1D1D1D; --g70:#58585B; --g50:#9E9EA2; --g10:#E8EBF1;
+  --white:#FFFFFF; --red:#E2231A; --border:#DDE1E7;
+  --font:'Inter',-apple-system,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:var(--font);
+  background: linear-gradient(135deg, #004BAF 0%, #097DBC 50%, #049FD9 100%);
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* Subtle grid overlay */
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+}
+
+.login-wrap {
+  background:white;
+  border-radius:12px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.25);
+  width:100%;
+  max-width:420px;
+  overflow:hidden;
+  animation: slideUp .4s ease;
+}
+
+@keyframes slideUp {
+  from{opacity:0;transform:translateY(20px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+.login-header {
+  background: var(--cisco-dk);
+  padding: 32px;
+  text-align:center;
+}
+
+.cisco-mark {
+  display:inline-flex;
+  align-items:flex-end;
+  gap:3px;
+  height:22px;
+  margin-bottom:16px;
+}
+.cisco-mark span {
+  display:block;
+  width:4px;
+  background:white;
+  border-radius:2px 2px 0 0;
+}
+.cisco-mark span:nth-child(1){height:9px}
+.cisco-mark span:nth-child(2){height:14px}
+.cisco-mark span:nth-child(3){height:18px}
+.cisco-mark span:nth-child(4){height:22px}
+.cisco-mark span:nth-child(5){height:18px}
+.cisco-mark span:nth-child(6){height:14px}
+.cisco-mark span:nth-child(7){height:9px}
+
+.product-name {
+  color:white;
+  font-size:24px;
+  font-weight:800;
+  letter-spacing:-.5px;
+}
+.product-name span{color:var(--cisco-blue);font-weight:300;}
+
+.product-sub {
+  color:rgba(255,255,255,.55);
+  font-size:12px;
+  margin-top:6px;
+  letter-spacing:.3px;
+}
+
+.login-body { padding:32px; }
+
+.form-group { margin-bottom:18px; }
+
+label {
+  display:block;
+  font-size:12px;
+  font-weight:600;
+  color:var(--g70);
+  margin-bottom:6px;
+  letter-spacing:.2px;
+}
+
+input[type=text],input[type=password] {
+  width:100%;
+  padding:10px 14px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  font-size:14px;
+  font-family:var(--font);
+  color:var(--g90);
+  transition:border-color .15s, box-shadow .15s;
+  outline:none;
+}
+
+input:focus {
+  border-color:var(--cisco-blue);
+  box-shadow:0 0 0 3px rgba(4,159,217,.12);
+}
+
+.btn-login {
+  width:100%;
+  padding:11px;
+  background:var(--cisco-blue);
+  color:white;
+  border:none;
+  border-radius:6px;
+  font-size:14px;
+  font-weight:600;
+  font-family:var(--font);
+  cursor:pointer;
+  transition:background .15s;
+  margin-top:4px;
+}
+.btn-login:hover{background:var(--cisco-md);}
+.btn-login:disabled{background:var(--g50);cursor:not-allowed;}
+
+.error-msg {
+  background:#FDECEA;
+  border:1px solid #f5c0be;
+  border-radius:5px;
+  padding:10px 14px;
+  font-size:12px;
+  color:var(--red);
+  margin-bottom:16px;
+  display:none;
+}
+.error-msg.show{display:block;}
+
+.demo-accounts {
+  margin-top:24px;
+  padding-top:20px;
+  border-top:1px solid var(--g10);
+}
+
+.demo-title {
+  font-size:10px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.8px;
+  color:var(--g50);
+  margin-bottom:10px;
+}
+
+.demo-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:8px 10px;
+  border:1px solid var(--border);
+  border-radius:5px;
+  margin-bottom:6px;
+  cursor:pointer;
+  transition:background .1s;
+}
+.demo-row:hover{background:#F5F6F8;}
+.demo-info .user{font-size:12px;font-weight:600;color:var(--g90);}
+.demo-info .pass{font-size:11px;color:var(--g50);}
+.role-pill {
+  font-size:9px;
+  font-weight:700;
+  padding:2px 7px;
+  border-radius:20px;
+  letter-spacing:.3px;
+}
+
+.login-footer {
+  padding:14px 32px;
+  background:#F5F6F8;
+  border-top:1px solid var(--g10);
+  font-size:11px;
+  color:var(--g50);
+  text-align:center;
+}
+
+.spinner {
+  display:inline-block;
+  width:14px;height:14px;
+  border:2px solid rgba(255,255,255,.3);
+  border-top-color:white;
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+  margin-right:8px;
+  vertical-align:middle;
+  display:none;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="login-header">
+    <div class="cisco-mark">
+      <span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span>
+    </div>
+    <div class="product-name">Net<span>DNA</span></div>
+    <div class="product-sub">Network Behavioural Intelligence · Cisco Native</div>
+  </div>
+
+  <div class="login-body">
+    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="form-group">
+      <label for="username">Username</label>
+      <input type="text" id="username" placeholder="Enter your username" autocomplete="username">
+    </div>
+
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
+    </div>
+
+    <button class="btn-login" id="loginBtn" onclick="doLogin()">
+      <span class="spinner" id="spinner"></span>
+      Sign In
+    </button>
+
+    <!-- Demo accounts for dev -->
+    <div class="demo-accounts">
+      <div class="demo-title">Development Accounts — Click to fill</div>
+      <div class="demo-row" onclick="fillLogin('admin','netdna2024')">
+        <div class="demo-info">
+          <div class="user">admin</div>
+          <div class="pass">netdna2024</div>
+        </div>
+        <span class="role-pill" style="background:#FDECEA;color:#E2231A">Administrator</span>
+      </div>
+      <div class="demo-row" onclick="fillLogin('analyst1','analyst123')">
+        <div class="demo-info">
+          <div class="user">analyst1</div>
+          <div class="pass">analyst123</div>
+        </div>
+        <span class="role-pill" style="background:#FEF3E6;color:#F7810A">Security Analyst</span>
+      </div>
+      <div class="demo-row" onclick="fillLogin('viewer1','viewer123')">
+        <div class="demo-info">
+          <div class="user">viewer1</div>
+          <div class="pass">viewer123</div>
+        </div>
+        <span class="role-pill" style="background:#EBF5FB;color:#004BAF">Read-Only Viewer</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="login-footer">
+    NetDNA v0.1 · Development Build · © 2024
+  </div>
+</div>
+
+<script>
+function fillLogin(u, p) {
+  document.getElementById('username').value = u;
+  document.getElementById('password').value = p;
+  document.getElementById('username').focus();
+}
+
+async function doLogin() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const errorEl  = document.getElementById('errorMsg');
+  const btn       = document.getElementById('loginBtn');
+  const spinner   = document.getElementById('spinner');
+
+  if (!username || !password) {
+    showError('Please enter username and password');
+    return;
+  }
+
+  btn.disabled = true;
+  spinner.style.display = 'inline-block';
+  errorEl.classList.remove('show');
+
+  try {
+    const resp = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password})
+    });
+
+    const data = await resp.json();
+
+    if (resp.ok) {
+      // Store token and user info
+      localStorage.setItem('netdna_token', data.access_token);
+      localStorage.setItem('netdna_user',  JSON.stringify(data.user));
+      window.location.href = '/dashboard';
+    } else {
+      showError(data.detail || 'Login failed');
+    }
+  } catch (e) {
+    showError('Cannot connect to server — is NetDNA running?');
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+  }
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+// Enter key submits
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// Redirect if already logged in
+if (localStorage.getItem('netdna_token')) {
+  window.location.href = '/dashboard';
+}
+</script>
+</body>
+</html>

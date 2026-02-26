@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — ISE Integration</title>
+<meta name="description" content="Cisco ISE integration status, sync log, and violation summary for NetDNA Edge NAC shim fleet.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/shared.css">
+<style>
+.status-card{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.status-panel{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:20px 22px;animation:fadeUp .4s ease forwards;opacity:0;}
+.status-panel:nth-child(1){animation-delay:.05s}
+.status-panel:nth-child(2){animation-delay:.1s}
+.sp-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.sp-icon{width:36px;height:36px;border-radius:6px;display:flex;align-items:center;
+  justify-content:center;font-size:16px;font-weight:700;flex-shrink:0;}
+.sp-title{font-size:14px;font-weight:700;}
+.sp-sub{font-size:11px;color:var(--g50);margin-top:2px;}
+.sp-row{display:flex;justify-content:space-between;align-items:center;
+  padding:7px 0;border-bottom:1px solid var(--g10);font-size:12px;}
+.sp-row:last-child{border-bottom:none;}
+.sp-k{color:var(--g50);font-weight:500;}
+.sp-v{font-weight:600;}
+.conn-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+.conn-ok{background:var(--green);}
+.conn-off{background:var(--g30);}
+.conn-err{background:var(--red);}
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.summary-grid .kpi-card{animation-delay:.15s;}
+.summary-grid .kpi-card:nth-child(2){animation-delay:.2s;}
+.summary-grid .kpi-card:nth-child(3){animation-delay:.25s;}
+.summary-grid .kpi-card:nth-child(4){animation-delay:.3s;}
+.rule-bar{display:flex;align-items:center;gap:10px;padding:6px 0;}
+.rule-name{font-size:12px;font-weight:500;min-width:160px;color:var(--g70);}
+.rule-fill-wrap{flex:1;height:6px;background:var(--g10);border-radius:3px;overflow:hidden;}
+.rule-fill{height:100%;border-radius:3px;background:var(--cisco-blue);transition:width .6s ease;}
+.rule-count{font-size:11px;font-weight:700;color:var(--g90);min-width:40px;text-align:right;}
+.sync-status{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;
+  border-radius:4px;font-size:10px;font-weight:700;}
+.sync-ok{background:var(--green-lt);color:var(--green);}
+.sync-fail{background:var(--red-lt);color:var(--red);}
+.empty-state{padding:40px 20px;text-align:center;color:var(--g50);font-size:13px;}
+</style>
+</head>
+<body>
+
+<div id="navMount"></div>
+
+<div class="subhdr">
+  <div class="breadcrumb">
+    <span>NetDNA</span><span>›</span>
+    <span>Edge NAC</span><span>›</span>
+    <span class="cur">ISE Integration</span>
+  </div>
+  <button class="btn btn-pri" data-testid="button-trigger-sync" onclick="triggerSync()">Trigger Sync</button>
+  <button class="btn btn-sec" data-testid="button-refresh" onclick="loadAll()">Refresh</button>
+</div>
+
+<div class="page">
+  <div class="status-card">
+    <div class="status-panel" data-testid="panel-ise-status">
+      <div class="sp-hdr">
+        <div class="sp-icon" style="background:var(--cisco-bg);color:var(--cisco-dk);">ISE</div>
+        <div>
+          <div class="sp-title">ISE Connection</div>
+          <div class="sp-sub">Cisco Identity Services Engine</div>
+        </div>
+      </div>
+      <div id="iseStatusRows">
+        <div class="sp-row"><span class="sp-k">Status</span><span class="sp-v" style="color:var(--g50)">Loading...</span></div>
+      </div>
+    </div>
+
+    <div class="status-panel" data-testid="panel-sync-summary">
+      <div class="sp-hdr">
+        <div class="sp-icon" style="background:var(--green-lt);color:var(--green);">24h</div>
+        <div>
+          <div class="sp-title">Sync Activity (24h)</div>
+          <div class="sp-sub">Recent ISE synchronization operations</div>
+        </div>
+      </div>
+      <div id="syncSummaryRows">
+        <div class="sp-row"><span class="sp-k">Status</span><span class="sp-v" style="color:var(--g50)">Loading...</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="summary-grid" data-testid="section-violation-summary">
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Violations 24h</div></div>
+      <div class="kpi-val kv-red" id="kTotal" data-testid="text-violations-total">--</div>
+      <div class="kpi-delta" style="color:var(--g50)">total events</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Critical / High</div></div>
+      <div class="kpi-val kv-orange" id="kCritHigh" data-testid="text-violations-crithigh">--</div>
+      <div class="kpi-delta" style="color:var(--g50)">severity breakdown</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Blocked</div></div>
+      <div class="kpi-val kv-blue" id="kBlocked" data-testid="text-violations-blocked">--</div>
+      <div class="kpi-delta" style="color:var(--g50)">enforced actions</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Shadow (Would Block)</div></div>
+      <div class="kpi-val kv-green" id="kShadow" data-testid="text-violations-shadow">--</div>
+      <div class="kpi-delta" style="color:var(--g50)">monitor mode events</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    <div class="card" data-testid="card-top-rules">
+      <div class="card-hdr">
+        <div class="card-title"><div class="cdot" style="background:var(--cisco-blue)"></div>Top Triggered Rules (24h)</div>
+      </div>
+      <div style="padding:14px 18px;" id="topRulesContent">
+        <div class="empty-state">Loading...</div>
+      </div>
+    </div>
+
+    <div class="card" data-testid="card-severity-breakdown">
+      <div class="card-hdr">
+        <div class="card-title"><div class="cdot" style="background:var(--orange)"></div>Violations by Severity</div>
+      </div>
+      <div style="padding:14px 18px;" id="severityContent">
+        <div class="empty-state">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-testid="card-sync-log">
+    <div class="card-hdr">
+      <div class="card-title"><div class="cdot" style="background:var(--green)"></div>ISE Sync Log</div>
+      <span class="cbadge" id="syncLogCount" data-testid="text-sync-log-count">--</span>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Time</th><th>Action</th><th>MAC</th><th>ISE Endpoint</th>
+        <th>ISE Group</th><th>Result</th><th>Detail</th>
+      </tr></thead>
+      <tbody id="syncLogTable" data-testid="table-sync-log">
+        <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--g50)">Loading sync log...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="statusbar">
+  <div class="si"><div class="sd sd-g"></div>NetFlow Active</div>
+  <div class="si"><div class="sd sd-b"></div>ISE pxGrid</div>
+  <div class="si"><div class="sd sd-b"></div>Catalyst Center API</div>
+  <div class="sr">NetDNA v0.1 · Simulator Mode · <strong>Cisco-Native</strong></div>
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script>
+(function(){
+  if (!Auth.guard()) return;
+  const style = document.createElement('style');
+  style.textContent = NAV_CSS;
+  document.head.appendChild(style);
+  document.getElementById('navMount').innerHTML = renderNav('ISE Integration');
+  loadAll();
+})();
+
+async function loadAll(){
+  try {
+    await Promise.all([loadStatus(), loadSyncLog(), loadViolationsSummary()]);
+  } catch(e){
+    console.error('Load error:', e);
+  }
+}
+
+async function loadStatus(){
+  try {
+    const data = await API.get('/ise/status');
+    const connected = data.connected;
+    const dotClass = connected ? 'conn-ok' : 'conn-off';
+    const statusLabel = connected ? 'Connected' : 'Not Connected';
+    const statusColor = connected ? 'var(--green)' : 'var(--g50)';
+
+    document.getElementById('iseStatusRows').innerHTML = `
+      <div class="sp-row">
+        <span class="sp-k">Status</span>
+        <span class="sp-v" style="color:${statusColor}">
+          <span class="conn-dot ${dotClass}"></span>${statusLabel}
+        </span>
+      </div>
+      <div class="sp-row">
+        <span class="sp-k">ISE Host</span>
+        <span class="sp-v">${data.ise_host || 'not configured'}</span>
+      </div>
+      <div class="sp-row">
+        <span class="sp-k">ISE Version</span>
+        <span class="sp-v">${data.ise_version || 'N/A'}</span>
+      </div>
+      <div class="sp-row">
+        <span class="sp-k">Last Checked</span>
+        <span class="sp-v">${data.checked_at ? timeAgo(data.checked_at) : 'N/A'}</span>
+      </div>
+      <div class="sp-row">
+        <span class="sp-k">Last Sync</span>
+        <span class="sp-v">${data.last_sync ? timeAgo(data.last_sync.ts) : 'Never'}</span>
+      </div>
+    `;
+
+    const s24 = data.syncs_24h;
+    if (s24) {
+      document.getElementById('syncSummaryRows').innerHTML = `
+        <div class="sp-row">
+          <span class="sp-k">Total Syncs</span>
+          <span class="sp-v">${s24.total || 0}</span>
+        </div>
+        <div class="sp-row">
+          <span class="sp-k">Succeeded</span>
+          <span class="sp-v ok">${s24.succeeded || 0}</span>
+        </div>
+        <div class="sp-row">
+          <span class="sp-k">Failed</span>
+          <span class="sp-v ${(s24.failed||0)>0?'bad':''}">${s24.failed || 0}</span>
+        </div>
+        <div class="sp-row">
+          <span class="sp-k">Success Rate</span>
+          <span class="sp-v">${s24.total > 0 ? Math.round((s24.succeeded||0)/s24.total*100) : 0}%</span>
+        </div>
+      `;
+    } else {
+      document.getElementById('syncSummaryRows').innerHTML = `
+        <div class="sp-row"><span class="sp-k">No sync activity in the last 24 hours</span></div>
+      `;
+    }
+  } catch(e){
+    document.getElementById('iseStatusRows').innerHTML = `
+      <div class="sp-row"><span class="sp-k">Error</span><span class="sp-v bad">${e.message}</span></div>
+    `;
+  }
+}
+
+async function loadSyncLog(){
+  try {
+    const rows = await API.get('/ise/log?limit=50');
+    document.getElementById('syncLogCount').textContent = rows.length + ' entries';
+
+    if (!rows.length) {
+      document.getElementById('syncLogTable').innerHTML =
+        '<tr><td colspan="7" class="empty-state">No sync log entries yet</td></tr>';
+      return;
+    }
+
+    document.getElementById('syncLogTable').innerHTML = rows.map(r => `
+      <tr data-testid="row-sync-${r.id}">
+        <td style="font-size:11px;white-space:nowrap;">${r.ts ? timeAgo(r.ts) : '--'}</td>
+        <td><span class="mitre-tag">${r.action || '--'}</span></td>
+        <td style="font-family:monospace;font-size:11px;">${r.mac || '--'}</td>
+        <td style="font-size:11px;">${r.ise_endpoint_id || '--'}</td>
+        <td>${r.ise_group || '--'}</td>
+        <td>${r.success
+          ? '<span class="sync-status sync-ok">OK</span>'
+          : '<span class="sync-status sync-fail">FAIL</span>'
+        }</td>
+        <td style="font-size:11px;color:var(--g50);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.detail || '--'}</td>
+      </tr>
+    `).join('');
+  } catch(e){
+    document.getElementById('syncLogTable').innerHTML =
+      `<tr><td colspan="7" class="empty-state">Failed to load sync log: ${e.message}</td></tr>`;
+  }
+}
+
+async function loadViolationsSummary(){
+  try {
+    const data = await API.get('/violations/summary');
+
+    document.getElementById('kTotal').textContent = data.total_24h || 0;
+
+    const critCount = (data.by_severity || []).find(s => s.severity === 'critical')?.count || 0;
+    const highCount = (data.by_severity || []).find(s => s.severity === 'high')?.count || 0;
+    document.getElementById('kCritHigh').textContent = critCount + highCount;
+
+    const blocked = (data.by_action || []).find(a => a.action === 'blocked')?.count || 0;
+    document.getElementById('kBlocked').textContent = blocked;
+
+    const shadow = (data.by_action || []).find(a => a.action === 'would_block')?.count || 0;
+    document.getElementById('kShadow').textContent = shadow;
+
+    // Top rules
+    const rules = data.top_rules || [];
+    if (rules.length) {
+      const maxCount = Math.max(...rules.map(r => r.count), 1);
+      document.getElementById('topRulesContent').innerHTML = rules.map(r => `
+        <div class="rule-bar">
+          <span class="rule-name">${r.rule_name}</span>
+          <div class="rule-fill-wrap">
+            <div class="rule-fill" style="width:${Math.round(r.count/maxCount*100)}%"></div>
+          </div>
+          <span class="rule-count">${r.count}</span>
+        </div>
+      `).join('');
+    } else {
+      document.getElementById('topRulesContent').innerHTML =
+        '<div class="empty-state">No violations in the last 24 hours</div>';
+    }
+
+    // Severity breakdown
+    const sevs = data.by_severity || [];
+    if (sevs.length) {
+      const sevOrder = ['critical','high','medium','low'];
+      const sevColors = {critical:'var(--red)',high:'var(--orange)',medium:'var(--cisco-blue)',low:'var(--green)'};
+      const sevBg = {critical:'var(--red-lt)',high:'var(--orange-lt)',medium:'var(--cisco-bg)',low:'var(--green-lt)'};
+      const sorted = sevOrder.map(s => sevs.find(x => x.severity === s)).filter(Boolean);
+      const maxSev = Math.max(...sorted.map(r => r.count), 1);
+
+      document.getElementById('severityContent').innerHTML = sorted.map(r => `
+        <div class="rule-bar">
+          <span class="rule-name">
+            <span class="sev ${r.severity==='critical'?'sc':r.severity==='high'?'sh':r.severity==='medium'?'sm':'sl'}">${r.severity}</span>
+          </span>
+          <div class="rule-fill-wrap">
+            <div class="rule-fill" style="width:${Math.round(r.count/maxSev*100)}%;background:${sevColors[r.severity]||'var(--cisco-blue)'}"></div>
+          </div>
+          <span class="rule-count">${r.count}</span>
+        </div>
+      `).join('');
+    } else {
+      document.getElementById('severityContent').innerHTML =
+        '<div class="empty-state">No violations in the last 24 hours</div>';
+    }
+  } catch(e){
+    document.getElementById('kTotal').textContent = '--';
+    console.error('Violations summary error:', e);
+  }
+}
+
+async function triggerSync(){
+  try {
+    const data = await API.post('/ise/sync', {});
+    toast(data.message || 'Sync triggered', 'success');
+    setTimeout(loadAll, 2000);
+  } catch(e){
+    toast(e.message || 'Sync failed', 'error');
+  }
+}
+
+setInterval(loadAll, 30000);
+</script>
+</body>
+</html>

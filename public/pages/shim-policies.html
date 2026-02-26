@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — Policy Templates</title>
+<meta name="description" content="Manage NAC shim policy templates and assignments for micro-segmentation of legacy OT devices.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/shared.css">
+<style>
+.tmpl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+.tmpl-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);
+  box-shadow:var(--shadow);overflow:hidden;cursor:pointer;transition:box-shadow .15s;}
+.tmpl-card:hover{box-shadow:var(--shadow-md);}
+.tmpl-card.expanded{cursor:default;}
+.tmpl-hdr{padding:16px 18px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.tmpl-name{font-size:15px;font-weight:700;color:var(--g90);}
+.tmpl-desc{font-size:12px;color:var(--g70);margin-top:4px;line-height:1.4;}
+.tmpl-meta{display:flex;align-items:center;gap:8px;padding:0 18px 14px;flex-wrap:wrap;}
+.tmpl-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.tmpl-badge.built-in{background:var(--cisco-bg);color:var(--cisco-dk);}
+.tmpl-badge.custom{background:var(--orange-lt);color:var(--orange);}
+.tmpl-badge.version{background:var(--g10);color:var(--g70);}
+.rule-summary{padding:0 18px 14px;font-size:12px;color:var(--g50);display:flex;align-items:center;gap:6px;}
+.rule-list{border-top:1px solid var(--g10);display:none;max-height:340px;overflow-y:auto;}
+.rule-list.open{display:block;}
+.rule-item{display:flex;align-items:center;gap:10px;padding:8px 18px;border-bottom:1px solid var(--g10);font-size:12px;}
+.rule-item:last-child{border-bottom:none;}
+.rule-action{font-size:10px;font-weight:700;padding:2px 7px;border-radius:3px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;}
+.rule-action.allow{background:var(--green-lt);color:var(--green);}
+.rule-action.deny{background:var(--red-lt);color:var(--red);}
+.rule-action.log{background:var(--cisco-bg);color:var(--cisco-dk);}
+.rule-action.block{background:var(--red-lt);color:var(--red);}
+.rule-proto{font-family:'Inter',monospace;font-size:11px;font-weight:600;color:var(--cisco-dk);
+  background:rgba(4,159,217,.08);padding:1px 6px;border-radius:3px;white-space:nowrap;}
+.rule-detail{flex:1;color:var(--g70);min-width:0;}
+.rule-ports{font-family:'Inter',monospace;font-size:11px;color:var(--g50);white-space:nowrap;}
+.expand-hint{padding:8px 18px;font-size:11px;color:var(--cisco-blue);font-weight:500;
+  border-top:1px solid var(--g10);text-align:center;}
+.assign-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.sel{padding:5px 10px;border:1px solid var(--border);border-radius:var(--r);
+  font-size:12px;font-family:var(--font);background:#fff;color:var(--g90);min-width:140px;}
+.form-row{display:flex;align-items:center;gap:10px;padding:14px 18px;
+  background:var(--g05);border-radius:var(--r);flex-wrap:wrap;}
+.form-label{font-size:12px;font-weight:600;color:var(--g70);white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<div id="navMount"></div>
+
+<div class="subhdr">
+  <div class="breadcrumb">
+    <span>NetDNA</span><span>></span>
+    <span>Edge NAC</span><span>></span>
+    <span class="cur">Policies</span>
+  </div>
+  <div style="display:flex;gap:6px;border-left:1px solid var(--border);padding-left:10px;">
+    <a class="btn btn-sec" href="/shim-devices" style="font-size:11px" data-testid="link-shim-devices">Devices</a>
+    <a class="btn btn-sec" href="/shim-downstream" style="font-size:11px" data-testid="link-shim-downstream">Downstream</a>
+    <a class="btn btn-sec" href="/shim-policies" style="font-size:11px;background:var(--cisco-blue);color:#fff;border-color:var(--cisco-blue)" data-testid="link-shim-policies">Policies</a>
+    <a class="btn btn-sec" href="/shim-ise" style="font-size:11px" data-testid="link-shim-ise">ISE Integration</a>
+  </div>
+</div>
+
+<div class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div>
+      <div style="font-size:15px;font-weight:700;color:var(--g90)">Policy Templates</div>
+      <div style="font-size:12px;color:var(--g50);margin-top:2px">Micro-segmentation rule sets assigned to shims. Click a template to view its rules.</div>
+    </div>
+  </div>
+
+  <div class="tmpl-grid" id="templateGrid" data-testid="template-grid">
+    <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--g50)">Loading templates...</div>
+  </div>
+
+  <div class="card" style="margin-top:6px;">
+    <div class="card-hdr">
+      <div class="card-title"><div class="cdot" style="background:var(--cisco-blue)"></div>Policy Assignments</div>
+      <span class="cbadge blue" id="assignCount" data-testid="text-assign-count">0</span>
+    </div>
+    <div class="form-row">
+      <span class="form-label">Assign Template:</span>
+      <select class="sel" id="assignShim" data-testid="select-assign-shim">
+        <option value="">Select Shim...</option>
+      </select>
+      <select class="sel" id="assignTemplate" data-testid="select-assign-template">
+        <option value="">Select Template...</option>
+      </select>
+      <button class="btn btn-pri" id="assignBtn" onclick="assignTemplate()" data-testid="button-assign-template">Assign</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Shim ID</th><th>Site / Zone</th><th>Template</th><th>Mode</th>
+        <th>Status</th><th>Assigned By</th><th>Assigned At</th><th>Policy Hash</th>
+      </tr></thead>
+      <tbody id="assignTable" data-testid="table-assignments">
+        <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--g50)">Loading assignments...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="statusbar">
+  <div class="si"><div class="sd sd-g"></div>Edge NAC Active</div>
+  <div class="si"><div class="sd sd-b"></div>Policy Engine</div>
+  <div class="sr">NetDNA v0.1 · Simulator Mode · <strong>Cisco-Native</strong></div>
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script>
+(function(){
+  if(!Auth.guard()) return;
+  document.getElementById('navMount').innerHTML = renderNav('Policies');
+  const style = document.createElement('style');
+  style.textContent = NAV_CSS;
+  document.head.appendChild(style);
+
+  let templates = [];
+  let shims = [];
+
+  loadAll();
+
+  async function loadAll(){
+    try {
+      const [tmpls, assignments, shimList] = await Promise.all([
+        API.get('/policies/templates'),
+        API.get('/policies/assignments'),
+        API.get('/shims')
+      ]);
+      templates = tmpls;
+      shims = shimList;
+      renderTemplates(tmpls);
+      renderAssignments(assignments);
+      populateSelects(tmpls, shimList);
+    } catch(e){
+      console.error('Load failed:', e);
+      toast('Failed to load policy data', 'error');
+    }
+  }
+
+  function renderTemplates(tmpls){
+    const grid = document.getElementById('templateGrid');
+    if(!tmpls.length){
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--g50)">No policy templates found</div>';
+      return;
+    }
+    grid.innerHTML = tmpls.map((t, idx) => {
+      const rules = t.rules || [];
+      const allowCount = rules.filter(r => r.action === 'allow').length;
+      const denyCount = rules.filter(r => r.action === 'deny' || r.action === 'block').length;
+      const logCount = rules.filter(r => r.action === 'log').length;
+      const builtInBadge = t.built_in
+        ? '<span class="tmpl-badge built-in">Built-in</span>'
+        : '<span class="tmpl-badge custom">Custom</span>';
+
+      const rulesHtml = rules.map(r => {
+        const actionCls = (r.action === 'allow') ? 'allow' : (r.action === 'log' ? 'log' : 'deny');
+        const proto = r.proto || r.protocol || 'any';
+        const ports = r.ports || r.dst_ports || r.port || '';
+        const desc = r.description || r.comment || r.name || '';
+        return `<div class="rule-item">
+          <span class="rule-action ${actionCls}">${r.action}</span>
+          <span class="rule-proto">${proto}</span>
+          <span class="rule-detail">${desc}</span>
+          ${ports ? `<span class="rule-ports">:${ports}</span>` : ''}
+        </div>`;
+      }).join('');
+
+      return `<div class="tmpl-card" data-testid="card-template-${t.name}" onclick="toggleRules(this, event)">
+        <div class="tmpl-hdr">
+          <div>
+            <div class="tmpl-name">${t.display_name || t.name}</div>
+            <div class="tmpl-desc">${t.description || ''}</div>
+          </div>
+        </div>
+        <div class="tmpl-meta">
+          ${builtInBadge}
+          <span class="tmpl-badge version">v${t.version || 1}</span>
+          <span class="tmpl-badge version">${rules.length} rules</span>
+        </div>
+        <div class="rule-summary">
+          ${allowCount ? `<span style="color:var(--green);font-weight:600">${allowCount} allow</span>` : ''}
+          ${denyCount ? `<span style="color:var(--red);font-weight:600">${denyCount} deny</span>` : ''}
+          ${logCount ? `<span style="color:var(--cisco-dk);font-weight:600">${logCount} log</span>` : ''}
+        </div>
+        <div class="expand-hint" data-hint>Click to view rules</div>
+        <div class="rule-list" data-rules>${rulesHtml || '<div style="padding:14px 18px;color:var(--g50);font-size:12px">No rules defined</div>'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  window.toggleRules = function(card, e){
+    const ruleList = card.querySelector('[data-rules]');
+    const hint = card.querySelector('[data-hint]');
+    const isOpen = ruleList.classList.contains('open');
+    ruleList.classList.toggle('open');
+    card.classList.toggle('expanded');
+    if(hint) hint.textContent = isOpen ? 'Click to view rules' : 'Click to collapse';
+  };
+
+  function renderAssignments(rows){
+    const tbody = document.getElementById('assignTable');
+    document.getElementById('assignCount').textContent = rows.length;
+    if(!rows.length){
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--g50)">No assignments yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(a => {
+      const modeBadge = modeTag(a.mode);
+      const statusBadge = statusTag(a.status);
+      const hash = a.policy_hash ? a.policy_hash.slice(0, 12) + '...' : '-';
+      const assignedAt = a.assigned_at ? timeAgo(a.assigned_at) : '-';
+      return `<tr data-testid="row-assignment-${a.shim_id}">
+        <td style="font-family:'Inter',monospace;font-size:11px;font-weight:600">${a.shim_id}</td>
+        <td>${a.site_id || '-'} / ${a.zone || '-'}</td>
+        <td><span style="font-weight:600">${a.display_name || a.template_name}</span></td>
+        <td>${modeBadge}</td>
+        <td>${statusBadge}</td>
+        <td>${a.assigned_by || '-'}</td>
+        <td>${assignedAt}</td>
+        <td style="font-family:'Inter',monospace;font-size:10px;color:var(--g50)">${hash}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function modeTag(mode){
+    const colors = {
+      monitor: 'background:var(--cisco-bg);color:var(--cisco-dk)',
+      enforce: 'background:var(--orange-lt);color:var(--orange)',
+      contain: 'background:var(--red-lt);color:var(--red)'
+    };
+    return `<span class="cbadge" style="${colors[mode] || ''}">${mode || '-'}</span>`;
+  }
+
+  function statusTag(status){
+    const colors = {
+      online:  'background:var(--green-lt);color:var(--green)',
+      pending: 'background:var(--orange-lt);color:var(--orange)',
+      offline: 'background:var(--g10);color:var(--g50)',
+      contained:'background:var(--red-lt);color:var(--red)'
+    };
+    return `<span class="cbadge" style="${colors[status] || ''}">${status || '-'}</span>`;
+  }
+
+  function populateSelects(tmpls, shimList){
+    const shimSel = document.getElementById('assignShim');
+    const tmplSel = document.getElementById('assignTemplate');
+
+    shimList.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.shim_id;
+      opt.textContent = `${s.shim_id} (${s.site_id || '-'}/${s.zone || '-'})`;
+      shimSel.appendChild(opt);
+    });
+
+    tmpls.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.name;
+      opt.textContent = t.display_name || t.name;
+      tmplSel.appendChild(opt);
+    });
+  }
+
+  window.assignTemplate = async function(){
+    const shimId = document.getElementById('assignShim').value;
+    const tmplName = document.getElementById('assignTemplate').value;
+    if(!shimId || !tmplName){
+      toast('Select both a shim and a template', 'error');
+      return;
+    }
+    try {
+      await API.post(`/shims/${shimId}/policy/assign`, { template_name: tmplName });
+      toast(`Template "${tmplName}" assigned to ${shimId}`, 'success');
+      loadAll();
+    } catch(e){
+      toast('Assignment failed: ' + e.message, 'error');
+    }
+  };
+
+})();
+</script>
+</body>
+</html>

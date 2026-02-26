@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — Downstream Devices</title>
+<meta name="description" content="View and classify downstream OT devices discovered by NAC shims across the network.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/shared.css">
+<style>
+.kpi-row{grid-template-columns:repeat(5,1fr);}
+.kpi-card:nth-child(5){animation-delay:.25s}
+.filter-bar{display:flex;align-items:center;gap:8px;padding:10px 18px;border-bottom:1px solid var(--g10);background:#fff;}
+.filter-pill{font-size:11px;font-weight:500;padding:5px 12px;border-radius:20px;border:1px solid var(--border);
+  background:#fff;color:var(--g70);cursor:pointer;transition:all .15s;font-family:var(--font);}
+.filter-pill:hover{border-color:var(--cisco-blue);color:var(--cisco-blue);}
+.filter-pill.active{background:var(--cisco-blue);color:#fff;border-color:var(--cisco-blue);}
+.search-input{border:1px solid var(--border);border-radius:var(--r);padding:5px 10px;font-size:12px;
+  font-family:var(--font);outline:none;width:220px;transition:border .2s;margin-left:auto;}
+.search-input:focus{border-color:var(--cisco-blue);}
+.search-input::placeholder{color:var(--g50);}
+.device-type-icon{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+  border-radius:5px;font-size:11px;font-weight:700;flex-shrink:0;margin-right:8px;}
+.dt-plc{background:var(--cisco-bg);color:var(--cisco-dk);}
+.dt-hmi{background:var(--orange-lt);color:var(--orange);}
+.dt-rtu{background:var(--green-lt);color:var(--green);}
+.dt-switch{background:var(--g10);color:var(--g70);}
+.dt-historian{background:rgba(167,139,250,.1);color:#7c3aed;}
+.dt-engws{background:rgba(167,139,250,.1);color:#7c3aed;}
+.dt-unknown{background:var(--g10);color:var(--g50);}
+td .device-name{font-weight:600;font-size:12px;}
+td .device-mac{font-size:10px;color:var(--g50);font-family:'Courier New',monospace;}
+.shim-link{color:var(--cisco-dk);font-weight:500;cursor:pointer;}
+.shim-link:hover{text-decoration:underline;}
+.template-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.tb-plc{background:var(--cisco-bg);color:var(--cisco-dk);}
+.tb-hmi{background:var(--orange-lt);color:var(--orange);}
+.tb-rtu{background:var(--green-lt);color:var(--green);}
+.tb-quarantine{background:var(--red-lt);color:var(--red);}
+.tb-unknown{background:var(--g10);color:var(--g50);}
+.tb-historian{background:rgba(167,139,250,.1);color:#7c3aed;}
+.action-btn{font-size:11px;font-weight:500;padding:4px 10px;border-radius:var(--r);border:1px solid var(--border);
+  background:#fff;color:var(--g70);cursor:pointer;transition:all .15s;font-family:var(--font);}
+.action-btn:hover{border-color:var(--cisco-blue);color:var(--cisco-blue);}
+.action-btn.pri{background:var(--cisco-blue);color:#fff;border-color:var(--cisco-blue);}
+.action-btn.pri:hover{background:var(--cisco-md);}
+.modal-form-group{margin-bottom:14px;}
+.modal-form-group label{display:block;font-size:11px;font-weight:600;color:var(--g50);text-transform:uppercase;
+  letter-spacing:.5px;margin-bottom:5px;}
+.modal-form-group input,.modal-form-group select{width:100%;padding:8px 10px;border:1px solid var(--border);
+  border-radius:var(--r);font-size:13px;font-family:var(--font);outline:none;transition:border .2s;}
+.modal-form-group input:focus,.modal-form-group select:focus{border-color:var(--cisco-blue);}
+.violation-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--g10);}
+.violation-row:last-child{border-bottom:none;}
+.vr-rule{font-weight:600;font-size:12px;flex:1;}
+.vr-time{font-size:11px;color:var(--g50);}
+.vr-ips{font-size:10px;color:var(--g50);font-family:'Courier New',monospace;}
+.empty-state{text-align:center;padding:40px;color:var(--g50);font-size:13px;}
+.ise-group-tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:3px;
+  background:rgba(0,75,175,.08);color:var(--cisco-dk);border:1px solid rgba(0,75,175,.15);}
+.device-count-badge{font-size:11px;font-weight:700;background:var(--cisco-bg);
+  color:var(--cisco-dk);padding:1px 7px;border-radius:10px;margin-left:6px;}
+</style>
+</head>
+<body>
+
+<div id="navMount"></div>
+
+<div class="subhdr">
+  <div class="breadcrumb">
+    <span>NetDNA</span><span>›</span>
+    <span>Edge NAC</span><span>›</span>
+    <span class="cur">Downstream Devices</span>
+  </div>
+  <div style="display:flex;gap:6px;border-left:1px solid var(--border);padding-left:10px;">
+    <a class="btn btn-sec" href="/shim-devices" style="font-size:11px" data-testid="link-shim-devices">Devices</a>
+    <a class="btn btn-sec" href="/shim-downstream" style="font-size:11px;background:var(--cisco-blue);color:#fff;border-color:var(--cisco-blue)" data-testid="link-shim-downstream">Downstream</a>
+    <a class="btn btn-sec" href="/shim-policies" style="font-size:11px" data-testid="link-shim-policies">Policies</a>
+    <a class="btn btn-sec" href="/shim-ise" style="font-size:11px" data-testid="link-shim-ise">ISE Integration</a>
+  </div>
+</div>
+
+<div class="page">
+  <div class="kpi-row" data-testid="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Total Devices</div></div>
+      <div class="kpi-val kv-blue" id="kTotal" data-testid="text-total-devices">--</div>
+      <div class="kpi-delta" style="color:var(--g50)">discovered across all shims</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Classified</div></div>
+      <div class="kpi-val kv-green" id="kClassified" data-testid="text-classified-devices">--</div>
+      <div class="kpi-delta" style="color:var(--g50)">type + template assigned</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Unclassified</div></div>
+      <div class="kpi-val kv-orange" id="kUnclassified" data-testid="text-unclassified-devices">--</div>
+      <div class="kpi-delta" style="color:var(--g50)">need operator tagging</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">Device Types</div></div>
+      <div class="kpi-val kv-blue" id="kTypes" data-testid="text-device-types">--</div>
+      <div class="kpi-delta" style="color:var(--g50)" id="kTypesBreakdown"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-lbl">ISE Mapped</div></div>
+      <div class="kpi-val kv-blue" id="kIseMapped" data-testid="text-ise-mapped">--</div>
+      <div class="kpi-delta" style="color:var(--g50)">synced to ISE groups</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title">
+        <div class="cdot" style="background:var(--cisco-blue)"></div>
+        Downstream Devices
+        <span class="device-count-badge" id="deviceCountBadge" data-testid="text-device-count">0</span>
+      </div>
+      <button class="btn btn-sec" onclick="exportCSV()" data-testid="button-export-csv">Export CSV</button>
+    </div>
+    <div class="filter-bar">
+      <button class="filter-pill active" data-filter="all" onclick="setFilter(this,'all')" data-testid="filter-all">All</button>
+      <button class="filter-pill" data-filter="PLC" onclick="setFilter(this,'PLC')" data-testid="filter-plc">PLC</button>
+      <button class="filter-pill" data-filter="HMI" onclick="setFilter(this,'HMI')" data-testid="filter-hmi">HMI</button>
+      <button class="filter-pill" data-filter="RTU" onclick="setFilter(this,'RTU')" data-testid="filter-rtu">RTU</button>
+      <button class="filter-pill" data-filter="Historian" onclick="setFilter(this,'Historian')" data-testid="filter-historian">Historian</button>
+      <button class="filter-pill" data-filter="Switch" onclick="setFilter(this,'Switch')" data-testid="filter-switch">Switch</button>
+      <button class="filter-pill" data-filter="Unknown" onclick="setFilter(this,'Unknown')" data-testid="filter-unknown">Unknown</button>
+      <input type="text" class="search-input" placeholder="Search MAC, IP, name..." id="searchInput" oninput="applyFilters()" data-testid="input-search">
+    </div>
+    <table>
+      <thead><tr>
+        <th>Device</th>
+        <th>IP Address</th>
+        <th>Type</th>
+        <th>Template</th>
+        <th>ISE Group</th>
+        <th>Shim</th>
+        <th>Site / Zone</th>
+        <th>Last Seen</th>
+        <th>Actions</th>
+      </tr></thead>
+      <tbody id="devicesTable" data-testid="table-devices">
+        <tr><td colspan="9" class="empty-state">Loading devices...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="overlay" id="tagOverlay" onclick="if(event.target===this)closeTagModal()">
+<div class="modal" style="max-width:520px;">
+  <div class="modal-hdr">
+    <div>
+      <div class="modal-title" id="tagModalTitle">Classify Device</div>
+      <div class="modal-sub" id="tagModalSub"></div>
+    </div>
+    <button class="modal-close" onclick="closeTagModal()" data-testid="button-close-tag-modal">&times;</button>
+  </div>
+  <div class="modal-body" style="padding:20px 24px;">
+    <div class="modal-form-group">
+      <label>Device Name</label>
+      <input type="text" id="tagDeviceName" placeholder="e.g., PLC-Pump-Station-1" data-testid="input-device-name">
+    </div>
+    <div class="modal-form-group">
+      <label>Device Type</label>
+      <select id="tagDeviceType" data-testid="select-device-type">
+        <option value="">-- Select Type --</option>
+        <option value="PLC">PLC</option>
+        <option value="RTU">RTU</option>
+        <option value="HMI">HMI</option>
+        <option value="Historian">Historian</option>
+        <option value="EngWS">Engineering Workstation</option>
+        <option value="Switch">Switch</option>
+        <option value="Unknown">Unknown</option>
+      </select>
+    </div>
+    <div class="modal-form-group">
+      <label>Policy Template</label>
+      <select id="tagTemplateName" data-testid="select-template-name">
+        <option value="">-- Select Template --</option>
+        <option value="plc">PLC</option>
+        <option value="rtu">RTU</option>
+        <option value="hmi">HMI</option>
+        <option value="historian">Historian</option>
+        <option value="quarantine">Quarantine</option>
+        <option value="unknown">Unknown</option>
+      </select>
+    </div>
+    <div class="modal-form-group">
+      <label>ISE Group</label>
+      <input type="text" id="tagIseGroup" placeholder="e.g., OT_PLC_Trusted" data-testid="input-ise-group">
+    </div>
+    <div class="modal-form-group">
+      <label>Notes</label>
+      <input type="text" id="tagNotes" placeholder="Optional notes..." data-testid="input-notes">
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-sec" onclick="closeTagModal()" data-testid="button-cancel-tag">Cancel</button>
+    <button class="btn btn-pri" onclick="submitTag()" data-testid="button-submit-tag">Save Classification</button>
+  </div>
+</div>
+</div>
+
+<div class="overlay" id="historyOverlay" onclick="if(event.target===this)closeHistoryModal()">
+<div class="modal" style="max-width:720px;">
+  <div class="modal-hdr">
+    <div>
+      <div class="modal-title" id="historyModalTitle">Violation History</div>
+      <div class="modal-sub" id="historyModalSub"></div>
+    </div>
+    <button class="modal-close" onclick="closeHistoryModal()" data-testid="button-close-history-modal">&times;</button>
+  </div>
+  <div class="modal-body" id="historyModalBody" style="padding:0;">
+    <div class="empty-state">Loading...</div>
+  </div>
+</div>
+</div>
+
+<div class="statusbar">
+  <div class="si"><div class="sd sd-g"></div>Shim Fleet Active</div>
+  <div class="si"><div class="sd sd-b"></div>Downstream Discovery</div>
+  <div class="si"><div class="sd sd-b"></div><span id="sbDevices">--</span> devices tracked</div>
+  <div class="sr">NetDNA v0.1 &middot; Edge NAC &middot; <strong>Downstream Devices</strong></div>
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script>
+(function(){
+  if(!Auth.guard()) return;
+  document.getElementById('navMount').innerHTML = renderNav('Downstream');
+  const styleEl = document.createElement('style');
+  styleEl.textContent = NAV_CSS;
+  document.head.appendChild(styleEl);
+
+  let allDevices = [];
+  let currentFilter = 'all';
+  let tagDeviceId = null;
+
+  async function loadDevices(){
+    try {
+      allDevices = await API.get('/downstream');
+      updateKPIs();
+      applyFilters();
+      document.getElementById('sbDevices').textContent = allDevices.length;
+    } catch(e){
+      document.getElementById('devicesTable').innerHTML =
+        '<tr><td colspan="9" class="empty-state">Failed to load devices: '+e.message+'</td></tr>';
+    }
+  }
+
+  function updateKPIs(){
+    const total = allDevices.length;
+    const classified = allDevices.filter(d => d.device_type && d.device_type !== 'Unknown').length;
+    const unclassified = total - classified;
+    const types = new Set(allDevices.map(d => d.device_type).filter(Boolean));
+    const iseMapped = allDevices.filter(d => d.ise_group).length;
+
+    document.getElementById('kTotal').textContent = total;
+    document.getElementById('kClassified').textContent = classified;
+    document.getElementById('kUnclassified').textContent = unclassified;
+    document.getElementById('kTypes').textContent = types.size;
+    document.getElementById('kIseMapped').textContent = iseMapped;
+    document.getElementById('deviceCountBadge').textContent = total;
+
+    const typeCounts = {};
+    allDevices.forEach(d => {
+      const t = d.device_type || 'Unknown';
+      typeCounts[t] = (typeCounts[t]||0) + 1;
+    });
+    const breakdown = Object.entries(typeCounts).map(([k,v])=>k+': '+v).join(' | ');
+    document.getElementById('kTypesBreakdown').textContent = breakdown;
+  }
+
+  window.applyFilters = function(){
+    const search = (document.getElementById('searchInput').value||'').toLowerCase();
+    let filtered = allDevices;
+
+    if(currentFilter !== 'all'){
+      filtered = filtered.filter(d => (d.device_type||'Unknown') === currentFilter);
+    }
+    if(search){
+      filtered = filtered.filter(d =>
+        (d.mac||'').toLowerCase().includes(search) ||
+        (d.ip||'').toLowerCase().includes(search) ||
+        (d.device_name||'').toLowerCase().includes(search) ||
+        (d.shim_id||'').toLowerCase().includes(search) ||
+        (d.shim_name||'').toLowerCase().includes(search)
+      );
+    }
+
+    renderTable(filtered);
+  };
+
+  window.setFilter = function(el, filter){
+    currentFilter = filter;
+    document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    applyFilters();
+  };
+
+  function deviceTypeIcon(type){
+    const t = (type||'Unknown').toLowerCase();
+    const map = {
+      plc: ['PLC','dt-plc'],
+      rtu: ['RTU','dt-rtu'],
+      hmi: ['HMI','dt-hmi'],
+      switch: ['SW','dt-switch'],
+      historian: ['HIS','dt-historian'],
+      engws: ['EW','dt-engws'],
+      unknown: ['?','dt-unknown']
+    };
+    const [label,cls] = map[t] || map['unknown'];
+    return '<div class="device-type-icon '+cls+'">'+label+'</div>';
+  }
+
+  function templateBadge(tmpl){
+    if(!tmpl) return '<span style="color:var(--g50);font-size:11px">--</span>';
+    const map = {plc:'tb-plc',hmi:'tb-hmi',rtu:'tb-rtu',quarantine:'tb-quarantine',
+                 unknown:'tb-unknown',historian:'tb-historian'};
+    const cls = map[tmpl] || 'tb-unknown';
+    return '<span class="template-badge '+cls+'">'+tmpl+'</span>';
+  }
+
+  function renderTable(devices){
+    const tbody = document.getElementById('devicesTable');
+    if(!devices.length){
+      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No devices match the current filter.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = devices.map(d => {
+      const name = d.device_name || '<span style="color:var(--g50);font-style:italic">Untagged</span>';
+      const iseGroup = d.ise_group
+        ? '<span class="ise-group-tag">'+d.ise_group+'</span>'
+        : '<span style="color:var(--g50);font-size:11px">--</span>';
+      const shimLabel = d.shim_name || d.shim_id || '--';
+      const siteZone = [d.site_id, d.zone].filter(Boolean).join(' / ') || '--';
+      const lastSeen = d.last_seen ? timeAgo(d.last_seen) : '--';
+
+      return '<tr data-testid="row-device-'+d.id+'">' +
+        '<td style="display:flex;align-items:center;">' +
+          deviceTypeIcon(d.device_type) +
+          '<div><div class="device-name">'+name+'</div>' +
+          '<div class="device-mac">'+d.mac+'</div></div></td>' +
+        '<td style="font-family:monospace;font-size:12px;">'+(d.ip||'--')+'</td>' +
+        '<td>'+severityStyleType(d.device_type)+'</td>' +
+        '<td>'+templateBadge(d.template_name)+'</td>' +
+        '<td>'+iseGroup+'</td>' +
+        '<td><span class="shim-link" onclick="event.stopPropagation()">'+shimLabel+'</span></td>' +
+        '<td style="font-size:12px;color:var(--g70)">'+siteZone+'</td>' +
+        '<td style="font-size:11px;color:var(--g50)">'+lastSeen+'</td>' +
+        '<td style="display:flex;gap:4px;flex-wrap:wrap;">' +
+          '<button class="action-btn pri" onclick="openTagModal('+d.id+')" data-testid="button-classify-'+d.id+'">Classify</button>' +
+          '<button class="action-btn" onclick="openHistoryModal('+d.id+')" data-testid="button-history-'+d.id+'">History</button>' +
+        '</td></tr>';
+    }).join('');
+  }
+
+  function severityStyleType(type){
+    if(!type) return '<span style="color:var(--g50);font-size:11px">Unknown</span>';
+    const colors = {
+      PLC: 'color:var(--cisco-dk)', RTU: 'color:var(--green)',
+      HMI: 'color:var(--orange)', Switch: 'color:var(--g70)',
+      Historian: 'color:#7c3aed', EngWS: 'color:#7c3aed', Unknown: 'color:var(--g50)'
+    };
+    return '<span style="font-size:12px;font-weight:600;'+(colors[type]||'')+'">'+type+'</span>';
+  }
+
+  window.openTagModal = function(deviceId){
+    tagDeviceId = deviceId;
+    const d = allDevices.find(x => x.id === deviceId);
+    if(!d) return;
+
+    document.getElementById('tagModalTitle').textContent = 'Classify Device';
+    document.getElementById('tagModalSub').textContent = d.mac + (d.ip ? ' (' + d.ip + ')' : '');
+    document.getElementById('tagDeviceName').value = d.device_name || '';
+    document.getElementById('tagDeviceType').value = d.device_type || '';
+    document.getElementById('tagTemplateName').value = d.template_name || '';
+    document.getElementById('tagIseGroup').value = d.ise_group || '';
+    document.getElementById('tagNotes').value = d.notes || '';
+    document.getElementById('tagOverlay').classList.add('open');
+  };
+
+  window.closeTagModal = function(){
+    document.getElementById('tagOverlay').classList.remove('open');
+    tagDeviceId = null;
+  };
+
+  window.submitTag = async function(){
+    if(!tagDeviceId) return;
+    const body = {};
+    const deviceName = document.getElementById('tagDeviceName').value.trim();
+    const deviceType = document.getElementById('tagDeviceType').value;
+    const templateName = document.getElementById('tagTemplateName').value;
+    const iseGroup = document.getElementById('tagIseGroup').value.trim();
+    const notes = document.getElementById('tagNotes').value.trim();
+
+    if(deviceName) body.device_name = deviceName;
+    if(deviceType) body.device_type = deviceType;
+    if(templateName) body.template_name = templateName;
+    if(iseGroup) body.ise_group = iseGroup;
+    if(notes) body.notes = notes;
+
+    if(Object.keys(body).length === 0){
+      toast('Please fill in at least one field', 'error');
+      return;
+    }
+
+    try {
+      await API.request('PATCH', '/downstream/'+tagDeviceId, body);
+      toast('Device classified successfully', 'success');
+      closeTagModal();
+      await loadDevices();
+    } catch(e){
+      toast('Failed to classify: '+e.message, 'error');
+    }
+  };
+
+  window.openHistoryModal = async function(deviceId){
+    const d = allDevices.find(x => x.id === deviceId);
+    if(!d) return;
+
+    document.getElementById('historyModalTitle').textContent = 'Violation History';
+    document.getElementById('historyModalSub').textContent =
+      (d.device_name || d.mac) + (d.ip ? ' (' + d.ip + ')' : '');
+    document.getElementById('historyModalBody').innerHTML =
+      '<div class="empty-state">Loading violations...</div>';
+    document.getElementById('historyOverlay').classList.add('open');
+
+    try {
+      const violations = await API.get('/downstream/'+deviceId+'/history');
+      renderHistory(violations);
+    } catch(e){
+      document.getElementById('historyModalBody').innerHTML =
+        '<div class="empty-state">Failed to load history: '+e.message+'</div>';
+    }
+  };
+
+  window.closeHistoryModal = function(){
+    document.getElementById('historyOverlay').classList.remove('open');
+  };
+
+  function renderHistory(violations){
+    const body = document.getElementById('historyModalBody');
+    if(!violations.length){
+      body.innerHTML = '<div class="empty-state">No violations recorded for this device.</div>';
+      return;
+    }
+    body.innerHTML = '<table style="width:100%">'+
+      '<thead><tr><th>Time</th><th>Severity</th><th>Rule</th><th>Source</th><th>Destination</th><th>Action</th><th>MITRE</th></tr></thead>'+
+      '<tbody>'+violations.map(v => {
+        const actionCls = v.action === 'blocked' ? 'color:var(--red);font-weight:600' :
+                          v.action === 'would_block' ? 'color:var(--orange);font-weight:600' :
+                          'color:var(--g70)';
+        const mitre = v.mitre_technique
+          ? '<span class="mitre-tag">'+v.mitre_technique+'</span>' : '--';
+        return '<tr data-testid="row-violation-'+v.id+'">'+
+          '<td style="font-size:11px;color:var(--g50);white-space:nowrap;">'+
+            (v.ts ? new Date(v.ts).toLocaleString() : '--')+'</td>'+
+          '<td>'+severityBadge(v.severity||'low')+'</td>'+
+          '<td style="font-size:12px;font-weight:500;">'+v.rule_name+'</td>'+
+          '<td style="font-family:monospace;font-size:11px;">'+(v.src_ip||'--')+
+            (v.src_port ? ':'+v.src_port : '')+'</td>'+
+          '<td style="font-family:monospace;font-size:11px;">'+(v.dst_ip||'--')+
+            (v.dst_port ? ':'+v.dst_port : '')+'</td>'+
+          '<td style="'+actionCls+';font-size:11px;">'+v.action+'</td>'+
+          '<td>'+mitre+'</td></tr>';
+      }).join('')+'</tbody></table>';
+  }
+
+  window.exportCSV = function(){
+    if(!allDevices.length){ toast('No data to export','info'); return; }
+    const headers = ['MAC','IP','Name','Type','Template','ISE Group','Shim','Site','Zone','Last Seen'];
+    const rows = allDevices.map(d => [
+      d.mac, d.ip||'', d.device_name||'', d.device_type||'', d.template_name||'',
+      d.ise_group||'', d.shim_id||'', d.site_id||'', d.zone||'', d.last_seen||''
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.map(c=>'"'+c+'"').join(','))].join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'downstream-devices.csv';
+    a.click();
+  };
+
+  loadDevices();
+  setInterval(loadDevices, 30000);
+})();
+</script>
+</body>
+</html>

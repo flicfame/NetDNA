@@ -1,0 +1,1632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — My Network · Settings</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/shared.css">
+<style>
+/* ═══ LAYOUT ════════════════════════════════════════ */
+.shell{
+  position:fixed;top:52px;bottom:0;left:0;right:0;
+  display:flex;
+}
+
+/* ═══ LEFT SIDEBAR ══════════════════════════════════ */
+.mn-sidebar{
+  width:220px;flex-shrink:0;
+  background:var(--g05);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto;
+}
+.mn-sidebar::-webkit-scrollbar{width:0}
+
+.sidebar-section{padding:16px 12px 8px}
+.ss-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--g50);padding:0 8px;margin-bottom:4px}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border-radius:6px;cursor:pointer;
+  transition:all .15s;margin-bottom:2px;
+  border:1px solid transparent;
+}
+.nav-item:hover{background:var(--g10)}
+.nav-item.on{background:rgba(4,159,217,.08);border-color:rgba(4,159,217,.2)}
+.ni-icon{font-size:14px;width:20px;text-align:center;flex-shrink:0}
+.ni-text{font-size:12px;font-weight:500;color:var(--g70);flex:1}
+.nav-item.on .ni-text{color:var(--cisco-blue)}
+.ni-badge{font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;background:var(--red-lt);color:var(--red);border:1px solid rgba(226,35,26,.15)}
+.ni-count{font-size:10px;color:var(--g50)}
+
+.sidebar-health{
+  margin:8px 12px;padding:12px;
+  background:var(--g10);border:1px solid var(--border);border-radius:8px;
+}
+.sh-title{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--g50);margin-bottom:10px}
+.sh-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--g10)}
+.sh-row:last-child{border-bottom:none}
+.sh-dot{width:6px;height:6px;border-radius:50%}
+.sh-label{font-size:11px;color:var(--g70);flex:1;margin-left:7px}
+.sh-val{font-size:11px;font-weight:600}
+
+/* ═══ MAIN CONTENT ══════════════════════════════════ */
+.mn-main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+
+/* ─ Page header ─ */
+.page-header{
+  padding:24px 28px 20px;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;background:#fff;
+  position:sticky;top:0;z-index:100;
+}
+.ph-row{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.ph-title{font-size:20px;font-weight:700;color:var(--g90);letter-spacing:-.3px;margin-bottom:4px}
+.ph-sub{font-size:12px;color:var(--g50);max-width:520px;line-height:1.6}
+.ph-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+
+/* Buttons (override shared for page-specific styles) */
+.btn-primary{background:var(--cisco-blue);border-color:var(--cisco-blue);color:#fff}
+.btn-primary:hover{background:var(--cisco-md)}
+.btn-danger{background:var(--red-lt);border-color:rgba(226,35,26,.2);color:var(--red)}
+.btn-sm{font-size:11px;padding:5px 10px}
+
+/* ─ Summary KPI strip ─ */
+.kpi-strip{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:1px;
+  background:var(--g10);border-top:1px solid var(--g10);
+}
+.kpi-tile{
+  background:#fff;padding:14px 20px;
+  display:flex;flex-direction:column;gap:3px;
+}
+.kt-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--g50)}
+.kt-val{font-size:22px;font-weight:800;color:var(--cisco-dk);letter-spacing:-.5px;line-height:1}
+.kt-sub{font-size:10px;color:var(--g50)}
+.kt-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
+
+/* ─ Sub-tabs ─ */
+.sub-tabs{
+  display:flex;gap:0;border-bottom:1px solid var(--border);
+  padding:0 28px;background:#fff;flex-shrink:0;
+  position:sticky;top:0;z-index:90;
+}
+.st{
+  font-size:11px;font-weight:500;
+  text-transform:uppercase;letter-spacing:.5px;
+  padding:13px 16px;border:none;background:none;color:var(--g50);
+  cursor:pointer;border-bottom:2px solid transparent;
+  margin-bottom:-1px;transition:all .15s;white-space:nowrap;
+  font-family:var(--font);
+}
+.st:hover{color:var(--g90)}
+.st.on{color:var(--cisco-blue);border-bottom-color:var(--cisco-blue)}
+
+/* ─ Content area ─ */
+.content{padding:24px 28px;display:flex;flex-direction:column;gap:28px}
+
+/* ═══ CONNECTOR CARDS ══════════════════════════════ */
+.section-label{
+  font-size:9px;font-weight:600;
+  text-transform:uppercase;letter-spacing:1.2px;color:var(--g50);
+  margin-bottom:12px;display:flex;align-items:center;gap:10px;
+}
+.section-label::after{content:'';flex:1;height:1px;background:var(--g10)}
+
+.connectors-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(340px,1fr));
+  gap:12px;
+}
+
+.connector-card{
+  background:#fff;border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;
+  transition:border-color .2s,box-shadow .2s;
+  display:flex;flex-direction:column;
+  box-shadow:var(--shadow);
+}
+.connector-card:hover{border-color:var(--g30);box-shadow:var(--shadow-md)}
+.connector-card.status-healthy{border-left:3px solid var(--green)}
+.connector-card.status-warn{border-left:3px solid var(--orange)}
+.connector-card.status-error{border-left:3px solid var(--red)}
+.connector-card.status-offline{border-left:3px solid var(--g50);opacity:.7}
+.connector-card.status-pending{border-left:3px solid var(--orange)}
+
+/* Card header */
+.cc-head{
+  display:flex;align-items:center;gap:12px;
+  padding:16px 18px 12px;
+}
+.cc-icon{
+  width:40px;height:40px;border-radius:var(--r);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;flex-shrink:0;
+}
+.cc-meta{flex:1;min-width:0}
+.cc-name{font-size:13px;font-weight:700;color:var(--g90);margin-bottom:2px}
+.cc-type{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;color:var(--g50)}
+.cc-status{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.status-pill{
+  display:flex;align-items:center;gap:5px;
+  font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.5px;
+  padding:4px 10px;border-radius:20px;
+}
+.sp-green {background:var(--green-lt);border:1px solid rgba(0,133,62,.2);color:var(--green)}
+.sp-orange{background:var(--orange-lt);border:1px solid rgba(247,129,10,.2);color:var(--orange)}
+.sp-red   {background:var(--red-lt);border:1px solid rgba(226,35,26,.2);color:var(--red)}
+.sp-dim   {background:var(--g10);border:1px solid var(--g30);color:var(--g50)}
+.sp-yellow{background:var(--orange-lt);border:1px solid rgba(247,129,10,.2);color:var(--orange)}
+.sp-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+.sp-pulse{animation:hbpulse 1.5s ease-in-out infinite}
+@keyframes hbpulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Card body */
+.cc-body{padding:0 18px 14px;display:flex;flex-direction:column;gap:10px}
+
+/* Data flow pills */
+.flow-chips{display:flex;flex-wrap:wrap;gap:4px}
+.flow-chip{
+  display:flex;align-items:center;gap:4px;
+  font-size:9px;font-weight:600;
+  padding:3px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:.3px;
+}
+.fc-flow    {background:var(--cisco-bg);border:1px solid rgba(4,159,217,.2);color:var(--cisco-dk)}
+.fc-identity{background:rgba(107,71,201,.08);border:1px solid rgba(107,71,201,.2);color:#6B47C9}
+.fc-posture {background:var(--green-lt);border:1px solid rgba(0,133,62,.2);color:var(--green)}
+.fc-auth    {background:var(--orange-lt);border:1px solid rgba(247,129,10,.2);color:var(--orange)}
+.fc-topology{background:var(--orange-lt);border:1px solid rgba(247,129,10,.2);color:var(--orange)}
+.fc-events  {background:var(--red-lt);border:1px solid rgba(226,35,26,.2);color:var(--red)}
+.fc-ot      {background:var(--cisco-bg);border:1px solid rgba(4,159,217,.15);color:var(--cisco-blue)}
+
+/* Metrics row */
+.cc-metrics{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:0;background:var(--g05);border-radius:var(--r);overflow:hidden;
+  border:1px solid var(--g10);
+}
+.ccm-cell{padding:8px 10px;border-right:1px solid var(--g10)}
+.ccm-cell:last-child{border-right:none}
+.ccm-label{font-size:9px;font-weight:600;color:var(--g50);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.ccm-val{font-size:11px;font-weight:600;color:var(--g90)}
+.ccm-val.green{color:var(--green)}
+.ccm-val.orange{color:var(--orange)}
+.ccm-val.red{color:var(--red)}
+
+/* Last seen */
+.cc-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 18px;border-top:1px solid var(--g10);
+  background:var(--g05);
+}
+.cf-last{font-size:10px;color:var(--g50)}
+.cf-last b{color:var(--g70)}
+.cf-actions{display:flex;gap:6px}
+.icon-btn{
+  width:26px;height:26px;border-radius:4px;
+  background:none;border:1px solid var(--border);
+  color:var(--g50);cursor:pointer;font-size:12px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .13s;
+}
+.icon-btn:hover{background:var(--g10);color:var(--g90);border-color:var(--g30)}
+.icon-btn.danger:hover{background:var(--red-lt);color:var(--red);border-color:rgba(226,35,26,.2)}
+
+/* Blast radius bar */
+.blast-radius{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;border-radius:var(--r);
+  background:var(--g05);border:1px solid var(--g10);
+}
+.br-label{font-size:9px;font-weight:600;color:var(--g50);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}
+.br-track{flex:1;height:4px;background:var(--g10);border-radius:2px;overflow:hidden}
+.br-fill{height:100%;border-radius:2px}
+.br-val{font-size:10px;font-weight:700;flex-shrink:0}
+.br-note{font-size:10px;color:var(--g50);margin-left:auto}
+
+/* ═══ CREDENTIAL MANAGER ════════════════════════════ */
+.cred-table{width:100%;border-collapse:collapse}
+.cred-table th{
+  font-size:10px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.5px;color:var(--g50);padding:8px 14px;
+  text-align:left;border-bottom:1px solid var(--border);background:var(--g05);
+  position:sticky;top:0;z-index:10;
+}
+.cred-table td{
+  padding:11px 14px;border-bottom:1px solid var(--g10);
+  vertical-align:middle;font-size:12px;
+}
+.cred-table tr:hover td{background:rgba(4,159,217,.03)}
+.cred-name{font-weight:600;color:var(--g90)}
+.cred-scope{display:flex;flex-wrap:wrap;gap:3px}
+.tag{font-size:9px;font-weight:500;padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.3px}
+.tag-cyan  {background:var(--cisco-bg);color:var(--cisco-dk);border:1px solid rgba(4,159,217,.2)}
+.tag-green {background:var(--green-lt);color:var(--green);border:1px solid rgba(0,133,62,.2)}
+.tag-orange{background:var(--orange-lt);color:var(--orange);border:1px solid rgba(247,129,10,.2)}
+.tag-red   {background:var(--red-lt);color:var(--red);border:1px solid rgba(226,35,26,.2)}
+.tag-purple{background:rgba(107,71,201,.08);color:#6B47C9;border:1px solid rgba(107,71,201,.2)}
+.tag-dim   {background:var(--g10);color:var(--g70);border:1px solid var(--g30)}
+.masked{font-size:11px;color:var(--g50);letter-spacing:2px}
+.rotate-warn{color:var(--orange);font-size:10px}
+
+/* ═══ INGESTION SETTINGS ════════════════════════════ */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.settings-card{
+  background:#fff;border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);
+}
+.sc-head{
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;
+}
+.sc-title{font-size:12px;font-weight:700;color:var(--g90)}
+.sc-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.field-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--g10)}
+.field-row:last-child{border-bottom:none}
+.field-label{font-size:12px;color:var(--g70);flex:1}
+.field-sub{font-size:10px;color:var(--g50);display:block;margin-top:1px}
+.field-val{font-size:11px;font-weight:600;color:var(--g90)}
+
+/* Toggle */
+.toggle-wrap{display:flex;align-items:center;gap:8px}
+.toggle{width:34px;height:18px;border-radius:9px;position:relative;cursor:pointer;flex-shrink:0;transition:background .2s}
+.toggle.on{background:var(--cisco-blue)}
+.toggle.off{background:var(--g30);border:1px solid var(--border)}
+.toggle-knob{position:absolute;top:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .2s}
+.toggle.on .toggle-knob{left:18px}
+.toggle.off .toggle-knob{left:2px}
+
+/* Text input */
+.field-input{
+  font-size:11px;font-family:var(--font);
+  background:var(--g05);border:1px solid var(--border);
+  border-radius:4px;padding:5px 9px;color:var(--g90);
+  outline:none;transition:border .15s;width:140px;
+}
+.field-input:focus{border-color:rgba(4,159,217,.5)}
+
+/* Select */
+.field-select{
+  font-size:11px;font-family:var(--font);
+  background:var(--g05);border:1px solid var(--border);
+  border-radius:4px;padding:5px 8px;color:var(--g90);
+  outline:none;cursor:pointer;
+}
+
+/* ═══ MAPPING RULES ═════════════════════════════════ */
+.mapping-table{width:100%;border-collapse:collapse}
+.mapping-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--g50);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);background:var(--g05)}
+.mapping-table td{padding:9px 12px;border-bottom:1px solid var(--g10);vertical-align:middle;font-size:11px}
+.mapping-table tr:hover td{background:rgba(4,159,217,.03)}
+.map-arrow{color:var(--g50);padding:0 8px;font-size:11px}
+.map-val{font-size:11px;font-weight:600}
+.map-src{color:var(--g90)}
+.map-dst{color:var(--cisco-blue)}
+.map-zone{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:9px;font-weight:600;padding:3px 8px;border-radius:3px;
+}
+.zone-it {background:var(--cisco-bg);color:var(--cisco-dk);border:1px solid rgba(4,159,217,.2)}
+.zone-ot {background:var(--green-lt);color:var(--green);border:1px solid rgba(0,133,62,.2)}
+.zone-mgmt{background:rgba(107,71,201,.08);color:#6B47C9;border:1px solid rgba(107,71,201,.2)}
+.zone-dmz {background:var(--orange-lt);color:var(--orange);border:1px solid rgba(247,129,10,.2)}
+
+/* ═══ API REFERENCE PANEL ═══════════════════════════ */
+.api-layout{display:grid;grid-template-columns:220px 1fr;gap:16px;height:fit-content}
+.api-nav{display:flex;flex-direction:column;gap:2px}
+.api-nav-item{
+  font-size:11px;padding:7px 10px;
+  border-radius:4px;cursor:pointer;color:var(--g50);
+  transition:all .13s;border:1px solid transparent;
+}
+.api-nav-item:hover{background:var(--g10);color:var(--g90)}
+.api-nav-item.on{background:var(--cisco-bg);border-color:rgba(4,159,217,.2);color:var(--cisco-blue)}
+.api-nav-group{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--g50);padding:8px 10px 4px;margin-top:4px}
+
+.api-endpoint{
+  background:#fff;border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;margin-bottom:12px;
+  box-shadow:var(--shadow);
+}
+.ae-head{
+  display:flex;align-items:center;gap:10px;
+  padding:14px 18px;border-bottom:1px solid var(--g10);cursor:pointer;
+  transition:background .15s;
+}
+.ae-head:hover{background:var(--g05)}
+.method{
+  font-size:10px;font-weight:600;
+  padding:3px 8px;border-radius:3px;letter-spacing:.3px;flex-shrink:0;
+}
+.m-get   {background:var(--cisco-bg);color:var(--cisco-dk);border:1px solid rgba(4,159,217,.2)}
+.m-post  {background:var(--green-lt);color:var(--green);border:1px solid rgba(0,133,62,.2)}
+.m-put   {background:var(--orange-lt);color:var(--orange);border:1px solid rgba(247,129,10,.2)}
+.m-delete{background:var(--red-lt);color:var(--red);border:1px solid rgba(226,35,26,.2)}
+.ae-path{font-size:12px;font-weight:600;color:var(--g90)}
+.ae-desc{font-size:11px;color:var(--g50);margin-left:auto}
+.ae-body{padding:16px 18px;display:none;border-top:1px solid var(--g10)}
+.ae-body.open{display:block}
+.code-block{
+  background:var(--g05);border:1px solid var(--border);border-radius:var(--r);
+  padding:12px 14px;font-size:11px;
+  color:var(--g90);overflow-x:auto;line-height:1.7;margin-bottom:10px;
+  font-family:'Courier New',monospace;
+}
+.code-block .kw{color:var(--cisco-blue)}
+.code-block .str{color:var(--green)}
+.code-block .num{color:var(--orange)}
+.code-block .key{color:#6B47C9}
+.code-block .cmt{color:var(--g50)}
+.param-table{width:100%;border-collapse:collapse;margin-bottom:10px}
+.param-table th{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--g50);padding:6px 10px;border-bottom:1px solid var(--g10);text-align:left}
+.param-table td{padding:7px 10px;border-bottom:1px solid var(--g10);font-size:11px;vertical-align:top}
+.param-name{font-size:11px;font-weight:600;color:var(--cisco-blue)}
+.param-type{font-size:10px;color:var(--g50)}
+.param-req{color:var(--red);font-size:9px}
+
+/* ═══ MINI ACTIVITY FEED ════════════════════════════ */
+.activity-feed{display:flex;flex-direction:column;gap:4px}
+.af-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:9px 12px;border-radius:var(--r);
+  background:#fff;border:1px solid var(--g10);
+  transition:border .15s;box-shadow:var(--shadow);
+}
+.af-item:hover{border-color:var(--g30)}
+.af-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.af-content{flex:1}
+.af-msg{font-size:11.5px;color:var(--g70);line-height:1.5}
+.af-meta{display:flex;gap:8px;margin-top:3px;align-items:center}
+.af-time{font-size:10px;color:var(--g50)}
+.af-src{font-size:10px;color:var(--g70)}
+
+/* ═══ MODAL / DRAWER ════════════════════════════════ */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.4);
+  z-index:500;display:none;align-items:center;justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.modal-overlay.open{display:flex}
+.mn-modal{
+  background:#fff;border:1px solid var(--border);border-radius:8px;
+  width:560px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,.15);
+  animation:mIn .25s ease;
+}
+@keyframes mIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.mn-modal-head{
+  display:flex;align-items:center;gap:12px;
+  padding:18px 22px;border-bottom:1px solid var(--border);flex-shrink:0;
+  background:var(--cisco-dk);
+}
+.mn-modal-title{font-size:15px;font-weight:700;color:#fff;flex:1}
+.mn-modal-close{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:18px;padding:4px;border-radius:4px;transition:color .13s}
+.mn-modal-close:hover{color:#fff}
+.mn-modal-body{padding:22px;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
+.mn-modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;background:var(--g05)}
+
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--g50)}
+.form-label span{color:var(--red);margin-left:2px}
+.form-input{
+  background:var(--g05);border:1px solid var(--border);border-radius:var(--r);
+  padding:9px 12px;font-size:12px;color:var(--g90);font-family:var(--font);
+  outline:none;transition:border .15s;width:100%;
+}
+.form-input:focus{border-color:rgba(4,159,217,.5)}
+.form-input::placeholder{color:var(--g50)}
+.form-hint{font-size:10px;color:var(--g50);line-height:1.5}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-select{
+  background:var(--g05);border:1px solid var(--border);border-radius:var(--r);
+  padding:9px 12px;font-size:12px;color:var(--g90);font-family:var(--font);
+  outline:none;width:100%;cursor:pointer;
+}
+
+/* Test connection progress */
+.test-bar{
+  height:3px;background:var(--g10);border-radius:2px;overflow:hidden;margin-top:4px;
+}
+.test-fill{height:100%;width:0;border-radius:2px;background:var(--cisco-blue);transition:width .4s ease}
+.test-status{font-size:11px;margin-top:6px}
+
+/* Fade-in stagger */
+@keyframes slideIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.connector-card{animation:slideIn .35s ease both}
+
+/* Override shared .page if needed */
+.ph-badge{font-size:9px;padding:2px 6px}
+
+</style>
+</head>
+<body>
+
+<div id="navMount"></div>
+
+<!-- ═══ SHELL ═════════════════════════════════════════════ -->
+<div class="shell">
+
+  <!-- ─── LEFT SIDEBAR ─── -->
+  <div class="mn-sidebar">
+
+    <div class="sidebar-section">
+      <div class="ss-label">Integration</div>
+      <div class="nav-item on" onclick="activateNav(this,'connectors')">
+        <div class="ni-icon">⬡</div>
+        <div class="ni-text">Connectors</div>
+        <div class="ni-badge">2</div>
+      </div>
+      <div class="nav-item" onclick="activateNav(this,'credentials')">
+        <div class="ni-icon">🔑</div>
+        <div class="ni-text">Credentials</div>
+        <div class="ni-count">8</div>
+      </div>
+      <div class="nav-item" onclick="activateNav(this,'ingestion')">
+        <div class="ni-icon">⚡</div>
+        <div class="ni-text">Ingestion</div>
+      </div>
+      <div class="nav-item" onclick="activateNav(this,'mapping')">
+        <div class="ni-icon">◎</div>
+        <div class="ni-text">Mapping Rules</div>
+        <div class="ni-count">24</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="ss-label">Developer</div>
+      <div class="nav-item" onclick="activateNav(this,'api')">
+        <div class="ni-icon">{'}'}</div>
+        <div class="ni-text">API Reference</div>
+      </div>
+      <div class="nav-item" onclick="activateNav(this,'webhooks')">
+        <div class="ni-icon">↗</div>
+        <div class="ni-text">Webhooks</div>
+        <div class="ni-count">3</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="ss-label">Edge NAC</div>
+      <a href="/shim-devices" class="nav-item" data-testid="nav-shim-fleet" style="text-decoration:none;color:inherit">
+        <div class="ni-icon">⬡</div>
+        <div class="ni-text">Edge NAC Console</div>
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="ss-label">Admin</div>
+      <div class="nav-item" onclick="activateNav(this,'users')">
+        <div class="ni-icon">👤</div>
+        <div class="ni-text">Users & Roles</div>
+      </div>
+      <div class="nav-item" onclick="activateNav(this,'audit')">
+        <div class="ni-icon">📋</div>
+        <div class="ni-text">Audit Log</div>
+      </div>
+    </div>
+
+    <!-- Connector health summary -->
+    <div style="flex:1"></div>
+    <div class="sidebar-health">
+      <div class="sh-title">Connector Health</div>
+      <div class="sh-row">
+        <div class="sh-dot" style="background:var(--green)"></div>
+        <div class="sh-label">Healthy</div>
+        <div class="sh-val" style="color:var(--green)" id="sh-healthy">—</div>
+      </div>
+      <div class="sh-row">
+        <div class="sh-dot" style="background:var(--orange)"></div>
+        <div class="sh-label">Warning</div>
+        <div class="sh-val" style="color:var(--orange)" id="sh-warn">—</div>
+      </div>
+      <div class="sh-row">
+        <div class="sh-dot" style="background:var(--red)"></div>
+        <div class="sh-label">Error</div>
+        <div class="sh-val" style="color:var(--red)" id="sh-error">—</div>
+      </div>
+      <div class="sh-row">
+        <div class="sh-dot" style="background:var(--g50)"></div>
+        <div class="sh-label">Offline</div>
+        <div class="sh-val" style="color:var(--g50)" id="sh-offline">—</div>
+      </div>
+    </div>
+    <div style="height:12px"></div>
+
+  </div><!-- /sidebar -->
+
+  <!-- ─── MAIN ─── -->
+  <div class="mn-main" id="mainContent">
+
+    <!-- ══════════ CONNECTORS VIEW ══════════ -->
+    <div id="view-connectors">
+
+      <!-- Page header -->
+      <div class="page-header">
+        <div class="ph-row">
+          <div class="ph-left">
+            <div class="ph-title">My Network</div>
+            <div class="ph-sub">Integration &amp; Inventory Control Plane — manage data sources, credentials, ingestion settings, and see what's flowing into NetDNA.</div>
+          </div>
+          <div class="ph-actions">
+            <button class="btn btn-sm btn-sec" onclick="openModal('activity')">📋 Activity Log</button>
+            <button class="btn btn-sm btn-pri" onclick="openModal('add-connector')">＋ Add Connector</button>
+          </div>
+        </div>
+
+        <!-- KPI strip -->
+        <div class="kpi-strip" style="margin-top:18px;border-top:1px solid var(--g10);padding-top:0;margin-left:-28px;margin-right:-28px;padding-left:28px">
+          <div class="kpi-tile">
+            <div class="kt-label">Sources Connected</div>
+            <div class="kt-val" id="kpi-sources">7</div>
+            <div class="kt-sub">of 12 available</div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kt-label">Flows / Second</div>
+            <div class="kt-val">42.3</div>
+            <div class="kt-sub" style="color:var(--green)">↑ 12% vs yesterday</div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kt-label">Events Today</div>
+            <div class="kt-val">1.4M</div>
+            <div class="kt-sub">flows, sessions, syslogs</div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kt-label">Identity Coverage</div>
+            <div class="kt-val">94<span style="font-size:14px;color:var(--g50)">%</span></div>
+            <div class="kt-sub">of endpoints authenticated</div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kt-label">Last Config Change</div>
+            <div class="kt-val" style="font-size:16px">14h</div>
+            <div class="kt-sub" style="color:var(--g50)">ago · by admin</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-tabs -->
+      <div class="sub-tabs">
+        <button class="st on" onclick="setSubTab(this,'all')">All Sources</button>
+        <button class="st" onclick="setSubTab(this,'cisco')">Cisco Platform</button>
+        <button class="st" onclick="setSubTab(this,'ot')">OT / ICS</button>
+        <button class="st" onclick="setSubTab(this,'netflow')">NetFlow</button>
+        <button class="st" onclick="setSubTab(this,'syslog')">Syslog</button>
+      </div>
+
+      <!-- Connector cards -->
+      <div class="content" id="connectorContent">
+
+        <!-- ── CISCO PLATFORM SOURCES ── -->
+        <div>
+          <div class="section-label">Cisco Platform Sources</div>
+          <div class="connectors-grid" id="ciscoGrid"></div>
+        </div>
+
+        <!-- ── NETFLOW EXPORTERS ── -->
+        <div>
+          <div class="section-label">NetFlow / IPFIX Exporters</div>
+          <div class="connectors-grid" id="netflowGrid"></div>
+        </div>
+
+        <!-- ── OT / ICS SOURCES ── -->
+        <div>
+          <div class="section-label">OT / ICS Sources</div>
+          <div class="connectors-grid" id="otGrid"></div>
+        </div>
+
+        <!-- ── SYSLOG RECEIVERS ── -->
+        <div>
+          <div class="section-label">Syslog / Event Receivers</div>
+          <div class="connectors-grid" id="syslogGrid"></div>
+        </div>
+
+      </div><!-- /content -->
+    </div><!-- /view-connectors -->
+
+    <!-- ══════════ CREDENTIALS VIEW ══════════ -->
+    <div id="view-credentials" style="display:none">
+      <div class="page-header">
+        <div class="ph-row">
+          <div class="ph-left">
+            <div class="ph-title">Credentials</div>
+            <div class="ph-sub">Stored API keys, certificates, RADIUS secrets, and OAuth tokens. Secrets are encrypted at rest using AES-256.</div>
+          </div>
+          <div class="ph-actions">
+            <button class="btn btn-sm btn-pri" onclick="openModal('add-cred')">＋ Add Credential</button>
+          </div>
+        </div>
+      </div>
+      <div class="content">
+        <table class="cred-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Used By</th>
+              <th>Scopes</th>
+              <th>Rotated</th>
+              <th>Expires</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="credTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════ INGESTION VIEW ══════════ -->
+    <div id="view-ingestion" style="display:none">
+      <div class="page-header">
+        <div class="ph-row">
+          <div class="ph-left">
+            <div class="ph-title">Ingestion Settings</div>
+            <div class="ph-sub">Control poll intervals, data filters, rate limits, and scope boundaries for each source type.</div>
+          </div>
+          <div class="ph-actions">
+            <button class="btn btn-sm btn-pri" onclick="saveIngestion()">Save Changes</button>
+          </div>
+        </div>
+      </div>
+      <div class="content" id="ingestionContent"></div>
+    </div>
+
+    <!-- ══════════ MAPPING VIEW ══════════ -->
+    <div id="view-mapping" style="display:none">
+      <div class="page-header">
+        <div class="ph-row">
+          <div class="ph-left">
+            <div class="ph-title">Mapping Rules</div>
+            <div class="ph-sub">Translate raw VLAN IDs, SGT tags, and IP ranges into named sites, zones, and departments used throughout NetDNA.</div>
+          </div>
+          <div class="ph-actions">
+            <button class="btn btn-sm btn-pri" onclick="openModal('add-mapping')">＋ Add Rule</button>
+          </div>
+        </div>
+      </div>
+      <div class="content" id="mappingContent"></div>
+    </div>
+
+    <!-- ══════════ API REFERENCE VIEW ══════════ -->
+    <div id="view-api" style="display:none">
+      <div class="page-header">
+        <div class="ph-row">
+          <div class="ph-left">
+            <div class="ph-title">API Reference</div>
+            <div class="ph-sub">Automate NetDNA via REST. All connector management, credential rotation, and health polling is available programmatically.</div>
+          </div>
+          <div class="ph-actions">
+            <button class="btn btn-sm btn-sec">📋 Copy Base URL</button>
+            <button class="btn btn-sm btn-pri">Generate API Key</button>
+          </div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="api-layout">
+          <div id="apiNav"></div>
+          <div id="apiEndpoints"></div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- PLACEHOLDER VIEWS -->
+    <div id="view-webhooks" style="display:none"><div class="page-header"><div class="ph-row"><div class="ph-left"><div class="ph-title">Webhooks</div><div class="ph-sub">Push anomaly alerts and connector health events to external systems.</div></div></div></div><div class="content"><div style="color:var(--g50);font-size:12px;padding:20px 0">Webhook configuration coming soon.</div></div></div>
+    <div id="view-users" style="display:none"><div class="page-header"><div class="ph-row"><div class="ph-left"><div class="ph-title">Users &amp; Roles</div><div class="ph-sub">Manage access control for NetDNA.</div></div></div></div><div class="content"><div style="color:var(--g50);font-size:12px;padding:20px 0">User management coming soon.</div></div></div>
+    <div id="view-audit" style="display:none"><div class="page-header"><div class="ph-row"><div class="ph-left"><div class="ph-title">Audit Log</div><div class="ph-sub">All configuration changes with actor, timestamp, and diff.</div></div></div></div><div class="content" id="auditContent"></div></div>
+
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- ═══ SHIM DRAWER ═══════════════════════════════════════ -->
+<!-- ═══ STATUSBAR ══════════════════════════════════════════ -->
+<div class="statusbar">
+  <div class="si"><div class="sd sd-g"></div>NetFlow Active</div>
+  <div class="si"><div class="sd sd-b"></div>ISE pxGrid · Connected</div>
+  <div class="si"><div class="sd sd-b"></div>Catalyst Center API</div>
+  <div class="si"><div class="sd sd-g"></div>Umbrella DNS Feed</div>
+  <div class="si"><div class="sd sd-o"></div>MDT Stream</div>
+  <div class="sr">NetDNA v0.1 · Simulator Mode · <strong>Cisco-Native</strong></div>
+</div>
+
+<!-- ═══ MODAL ═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="mn-modal" id="modal">
+    <div class="mn-modal-head">
+      <div class="mn-modal-title" id="modalTitle">Modal</div>
+      <button class="mn-modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="mn-modal-body" id="modalBody"></div>
+    <div class="mn-modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script>
+if (!Auth.guard()) throw new Error('Not authenticated');
+
+(function(){
+  const mount = document.getElementById('navMount');
+  const style = document.createElement('style');
+  style.textContent = NAV_CSS;
+  document.head.appendChild(style);
+  mount.innerHTML = renderNav('My Network');
+})();
+
+// ═══════════════════════════════════════════════════════
+// DATA MODEL
+// ═══════════════════════════════════════════════════════
+
+const CONNECTORS = [
+  {
+    id:'ise', group:'cisco',
+    name:'Cisco ISE 3.1',
+    type:'Identity · Policy · pxGrid',
+    icon:'🔐', iconBg:'rgba(4,159,217,.1)',
+    status:'healthy',
+    target:'ise-01.netdna.lab:8910',
+    protocol:'pxGrid v2 / REST',
+    flows:['identity','posture','auth','events'],
+    metrics:{ 'Sessions':'47 active', 'Polls/min':'12', 'Latency':'18 ms' },
+    lastSeen:'2s ago',
+    blastRadius:95,
+    blastNote:'Identity lost → 47 entities become anonymous',
+    uptime:'14h 32m', errors:0,
+    scopes:['Session Directory','ANC Policy','TrustSec SGT'],
+  },
+  {
+    id:'catalyst-center', group:'cisco',
+    name:'Catalyst Center',
+    type:'Topology · Inventory · DNA',
+    icon:'🌐', iconBg:'rgba(232,114,10,.08)',
+    status:'warn',
+    target:'dnac.netdna.lab:443',
+    protocol:'RESTCONF / HTTPS',
+    flows:['topology','inventory'],
+    metrics:{ 'Devices':'24 synced', 'Lag':'4 min 12s', 'API Calls/hr':'340' },
+    lastSeen:'4m 12s ago',
+    blastRadius:40,
+    blastNote:'Topology stale but flows continue unaffected',
+    uptime:'14h 28m', errors:3,
+    scopes:['Device Inventory','Topology','Site Hierarchy'],
+  },
+  {
+    id:'firepower', group:'cisco',
+    name:'Cisco Firepower / FTD',
+    type:'Threat · IPS · FMC Events',
+    icon:'◈', iconBg:'rgba(212,50,28,.08)',
+    status:'healthy',
+    target:'fmc.netdna.lab:443',
+    protocol:'FMC REST API / eStreamer',
+    flows:['events','topology'],
+    metrics:{ 'Events/hr':'1,204', 'IPS Rules':'14,820', 'API':'v6.6' },
+    lastSeen:'8s ago',
+    blastRadius:30,
+    blastNote:'IPS correlation degrades; NetFlow still active',
+    uptime:'6h 14m', errors:0,
+    scopes:['Security Events','IPS Alerts','Network Map'],
+  },
+  {
+    id:'securex', group:'cisco',
+    name:'Cisco SecureX / XDR',
+    type:'Threat Intel · SecureX Orchestration',
+    icon:'⚔', iconBg:'rgba(107,71,201,.08)',
+    status:'offline',
+    target:'securex.cisco.com',
+    protocol:'OAuth 2.0 / REST',
+    flows:['events'],
+    metrics:{ 'Status':'Token expired', 'Last sync':'18h ago', 'Modules':'0' },
+    lastSeen:'18h ago',
+    blastRadius:15,
+    blastNote:'Threat intel enrichment offline only',
+    uptime:'—', errors:12,
+    scopes:['Threat Intelligence','Incident Response'],
+  },
+  // NETFLOW
+  {
+    id:'sw-core-01-nf', group:'netflow',
+    name:'SW-CORE-01 NetFlow',
+    type:'NetFlow v9 · L3 Core',
+    icon:'⬡', iconBg:'rgba(4,159,217,.08)',
+    status:'healthy',
+    target:'10.100.0.1 → UDP 2055',
+    protocol:'NetFlow v9',
+    flows:['flow'],
+    metrics:{ 'Flows/s':'42.3', 'Templates':'4', 'VLAN Scope':'10,20,30,40' },
+    lastSeen:'<1s ago',
+    blastRadius:100,
+    blastNote:'Core switch — all IT visibility lost if disconnected',
+    uptime:'14h 32m', errors:0,
+    scopes:['All SVIs','WAN Uplink'],
+  },
+  {
+    id:'sw-core-02-nf', group:'netflow',
+    name:'SW-CORE-02 NetFlow',
+    type:'NetFlow v9 · L3 Core Redundant',
+    icon:'⬡', iconBg:'rgba(4,159,217,.06)',
+    status:'healthy',
+    target:'10.100.0.2 → UDP 2055',
+    protocol:'NetFlow v9',
+    flows:['flow'],
+    metrics:{ 'Flows/s':'18.7', 'Templates':'4', 'VLAN Scope':'40 (redund.)' },
+    lastSeen:'<1s ago',
+    blastRadius:55,
+    blastNote:'Redundant path; SW-CORE-01 handles primary',
+    uptime:'14h 32m', errors:0,
+    scopes:['VLAN-40 Dev (redundant)'],
+  },
+  // OT
+  {
+    id:'ot-span', group:'ot',
+    name:'OT SPAN Mirror',
+    type:'Modbus/TCP · DNP3 · EtherNet/IP',
+    icon:'⚙', iconBg:'rgba(0,133,62,.08)',
+    status:'healthy',
+    target:'SW-OT-CORE Gi2/0 → eth1',
+    protocol:'Passive SPAN / Scapy capture',
+    flows:['ot'],
+    metrics:{ 'Protocols':'5', 'PLCs':'4 active', 'Pkts/s':'210' },
+    lastSeen:'<1s ago',
+    blastRadius:90,
+    blastNote:'OT anomaly detection blind if SPAN removed',
+    uptime:'14h 32m', errors:0,
+    scopes:['VLAN-101 Control','VLAN-102 Supervisory'],
+  },
+  {
+    id:'scada-api', group:'ot',
+    name:'SCADA REST API',
+    type:'Process Values · Historian',
+    icon:'🖥', iconBg:'rgba(4,159,217,.06)',
+    status:'healthy',
+    target:'http://192.168.102.11:9001',
+    protocol:'HTTP REST / JSON',
+    flows:['ot'],
+    metrics:{ 'Tags':'12 polled', 'Poll':'1s interval', 'Alarms':'2 active' },
+    lastSeen:'1s ago',
+    blastRadius:35,
+    blastNote:'Process values unavailable; OT packet capture still active',
+    uptime:'14h 31m', errors:0,
+    scopes:['/api/process-values','/api/historian','/api/alarms'],
+  },
+  // SYSLOG
+  {
+    id:'syslog-cisco', group:'syslog',
+    name:'Cisco Syslog Receiver',
+    type:'IOS / ASA / ISE Syslog',
+    icon:'📋', iconBg:'rgba(4,159,217,.06)',
+    status:'healthy',
+    target:'0.0.0.0:514 UDP',
+    protocol:'RFC 5424 Syslog',
+    flows:['events','auth'],
+    metrics:{ 'Msgs/min':'284', 'Sources':'6 devices', 'Parse errors':'0' },
+    lastSeen:'<1s ago',
+    blastRadius:25,
+    blastNote:'Auth event correlation degrades; NetFlow unaffected',
+    uptime:'14h 32m', errors:0,
+    scopes:['SW-CORE-01','SW-CORE-02','FW-EDGE-01','ISE-01'],
+  },
+];
+
+const CREDENTIALS = [
+  { name:'ISE-pxGrid',       type:'Certificate + Secret', usedBy:'Cisco ISE',       scopes:['pxgrid','anc','trustsec'], rotated:'2d ago',  expires:'89d', status:'ok' },
+  { name:'ISE-RADIUS',       type:'Shared Secret',        usedBy:'All Switches',    scopes:['radius'],                   rotated:'14d ago', expires:'346d',status:'ok' },
+  { name:'DNAC-Token',       type:'Bearer Token',         usedBy:'Catalyst Center', scopes:['read','topology'],          rotated:'18h ago', expires:'5h',  status:'warn', warnMsg:'Expires in 5h' },
+  { name:'FMC-API-Key',      type:'API Key',              usedBy:'Cisco Firepower', scopes:['events','network-map'],     rotated:'5d ago',  expires:'25d', status:'ok' },
+  { name:'SecureX-OAuth',    type:'OAuth 2.0',            usedBy:'Cisco SecureX',   scopes:['casebook','response'],      rotated:'18h ago', expires:'EXPIRED', status:'error', warnMsg:'Token expired' },
+  { name:'NetDNA-API-Key-1', type:'API Key',              usedBy:'Automation',      scopes:['read','write'],             rotated:'30d ago', expires:'335d',status:'ok' },
+  { name:'SNMP-Community',   type:'SNMP v2c',             usedBy:'SNMP Polling',    scopes:['read'],                     rotated:'14d ago', expires:'Never',status:'ok' },
+  { name:'OT-SCADA-None',    type:'No Auth',              usedBy:'SCADA REST API',  scopes:['internal-only'],            rotated:'—',       expires:'—',   status:'ok' },
+];
+
+const MAPPINGS = {
+  vlan:[
+    { src:'VLAN 10', dst:'IT-Ops',    site:'HQ-London',  zone:'it',   dept:'IT Operations' },
+    { src:'VLAN 20', dst:'Finance',   site:'HQ-London',  zone:'it',   dept:'Finance' },
+    { src:'VLAN 30', dst:'HR',        site:'HQ-London',  zone:'it',   dept:'Human Resources' },
+    { src:'VLAN 40', dst:'Dev',       site:'HQ-London',  zone:'it',   dept:'Engineering' },
+    { src:'VLAN 50', dst:'Guest',     site:'HQ-London',  zone:'dmz',  dept:'Guest / Unauth' },
+    { src:'VLAN 99', dst:'Quarantine',site:'HQ-London',  zone:'it',   dept:'Quarantine' },
+    { src:'VLAN 100',dst:'Management',site:'HQ-London',  zone:'mgmt', dept:'NetOps' },
+    { src:'VLAN 101',dst:'OT-Control',site:'HQ-Factory', zone:'ot',   dept:'OT Level-1' },
+    { src:'VLAN 102',dst:'OT-SCADA',  site:'HQ-Factory', zone:'ot',   dept:'OT Level-2' },
+    { src:'VLAN 103',dst:'OT-Ops',    site:'HQ-Factory', zone:'ot',   dept:'OT Level-3' },
+    { src:'VLAN 200',dst:'Collector', site:'HQ-London',  zone:'mgmt', dept:'NetDNA Infra' },
+  ],
+  sgt:[
+    { src:'SGT 10',  dst:'SGT-IT-Ops',      zone:'it',   access:'Standard IT policy' },
+    { src:'SGT 20',  dst:'SGT-Finance',      zone:'it',   access:'Finance policy + DLP' },
+    { src:'SGT 30',  dst:'SGT-HR',           zone:'it',   access:'HR policy' },
+    { src:'SGT 40',  dst:'SGT-Dev',          zone:'it',   access:'Dev + JIRA + GitHub' },
+    { src:'SGT 50',  dst:'SGT-Guest',        zone:'dmz',  access:'Internet only' },
+    { src:'SGT 99',  dst:'SGT-Quarantine',   zone:'it',   access:'DNS + NTP only' },
+    { src:'SGT 101', dst:'SGT-OT-Control',   zone:'ot',   access:'OT-to-OT only' },
+    { src:'SGT 102', dst:'SGT-OT-SCADA',     zone:'ot',   access:'OT SCADA policy' },
+  ],
+};
+
+const API_ENDPOINTS = [
+  {
+    group:'Connectors',
+    endpoints:[
+      { method:'GET',    path:'/api/v1/connectors',             desc:'List all connectors',
+        params:[], example:`{ "connectors": [ { "id": "ise", "name": "Cisco ISE 3.1", "status": "healthy", "last_seen": "2025-02-23T14:22:01Z" } ] }` },
+      { method:'POST',   path:'/api/v1/connectors',             desc:'Register a new connector',
+        params:[{name:'name',type:'string',req:true,desc:'Display name'},{name:'type',type:'string',req:true,desc:'ise|dnac|netflow|syslog|ftd|securex|scada'},{name:'target',type:'string',req:true,desc:'Hostname or IP:port'},{name:'credential_id',type:'string',req:true,desc:'Credential from /credentials'}],
+        example:`{ "id": "ise-2", "name": "Cisco ISE Branch", "status": "pending", "created_at": "2025-02-23T14:22:01Z" }` },
+      { method:'GET',    path:'/api/v1/connectors/{id}/health', desc:'Health check + metrics',
+        params:[{name:'id',type:'path',req:true,desc:'Connector ID'}],
+        example:`{ "status": "healthy", "latency_ms": 18, "last_poll": "2025-02-23T14:22:01Z", "events_last_hour": 4820 }` },
+      { method:'POST',   path:'/api/v1/connectors/{id}/test',   desc:'Test connectivity',
+        params:[{name:'id',type:'path',req:true,desc:'Connector ID'}],
+        example:`{ "success": true, "latency_ms": 22, "message": "pxGrid handshake OK" }` },
+      { method:'POST',   path:'/api/v1/connectors/{id}/resync', desc:'Force topology/inventory resync',
+        params:[{name:'id',type:'path',req:true,desc:'Connector ID'},{name:'scope',type:'string',req:false,desc:'topology|inventory|sessions|all'}],
+        example:`{ "job_id": "resync-abc123", "status": "queued" }` },
+      { method:'PUT',    path:'/api/v1/connectors/{id}',        desc:'Update connector config',
+        params:[{name:'enabled',type:'bool',req:false,desc:'Enable/disable'},{name:'poll_interval',type:'int',req:false,desc:'Seconds between polls'}],
+        example:`{ "id": "ise", "enabled": true, "updated_at": "2025-02-23T14:22:01Z" }` },
+      { method:'DELETE', path:'/api/v1/connectors/{id}',        desc:'Remove connector',
+        params:[],example:`{ "deleted": true }` },
+    ]
+  },
+  {
+    group:'Credentials',
+    endpoints:[
+      { method:'GET',  path:'/api/v1/credentials',          desc:'List credential stubs (secrets masked)',
+        params:[], example:`{ "credentials": [ { "id": "ise-pxgrid", "type": "cert", "expires_at": "2025-05-23" } ] }` },
+      { method:'POST', path:'/api/v1/credentials',          desc:'Store new credential',
+        params:[{name:'name',type:'string',req:true,desc:'Label'},{name:'type',type:'string',req:true,desc:'secret|cert|token|oauth'},{name:'value',type:'string',req:true,desc:'Secret value (write-only)'}],
+        example:`{ "id": "cred-xyz", "name": "ISE-pxGrid", "created_at": "2025-02-23T14:22:01Z" }` },
+      { method:'POST', path:'/api/v1/credentials/{id}/rotate', desc:'Rotate secret and update all linked connectors',
+        params:[{name:'new_value',type:'string',req:true,desc:'New secret value'}],
+        example:`{ "rotated": true, "connectors_updated": ["ise","ise-branch"] }` },
+    ]
+  },
+  {
+    group:'Health & Status',
+    endpoints:[
+      { method:'GET', path:'/api/v1/health',                 desc:'Overall system health',
+        params:[], example:`{ "healthy": 6, "warn": 1, "error": 1, "offline": 1, "data_lag_seconds": 8 }` },
+      { method:'GET', path:'/api/v1/health/blast-radius/{id}',desc:'Impact analysis if connector removed',
+        params:[{name:'id',type:'path',req:true,desc:'Connector ID'}],
+        example:`{ "score": 95, "impact": "47 entities become anonymous", "dependent_features": ["lateral-detection","posture"] }` },
+    ]
+  },
+];
+
+const AUDIT_LOG = [
+  { ts:'14:18:02', actor:'admin',     action:'Connector resync triggered',    target:'Catalyst Center',   result:'ok' },
+  { ts:'14:12:45', actor:'api-key-1', action:'Credential rotated',            target:'ISE-pxGrid',        result:'ok' },
+  { ts:'14:09:11', actor:'admin',     action:'Ingestion filter updated',      target:'NetFlow SW-CORE-01',result:'ok' },
+  { ts:'13:55:20', actor:'system',    action:'Connector health check failed', target:'SecureX OAuth',     result:'error', detail:'Token expired' },
+  { ts:'13:44:01', actor:'admin',     action:'VLAN mapping added',            target:'VLAN 200',          result:'ok' },
+  { ts:'11:02:33', actor:'api-key-1', action:'Connector registered',          target:'FMC Firepower',     result:'ok' },
+  { ts:'08:15:00', actor:'system',    action:'Credential expiry warning',     target:'DNAC-Token',        result:'warn', detail:'Expires in 5h' },
+];
+
+// ═══════════════════════════════════════════════════════
+// FLOW CHIP RENDERER
+// ═══════════════════════════════════════════════════════
+const FLOW_LABELS = {
+  flow:'NetFlow', identity:'Identity', posture:'Posture',
+  auth:'Auth', topology:'Topology', events:'Events', ot:'OT / ICS',
+};
+const FLOW_CLS = {
+  flow:'fc-flow', identity:'fc-identity', posture:'fc-posture',
+  auth:'fc-auth', topology:'fc-topology', events:'fc-events', ot:'fc-ot',
+};
+
+function flowChips(types) {
+  return types.map(t=>`<span class="flow-chip ${FLOW_CLS[t]}">${FLOW_LABELS[t]||t}</span>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// CONNECTOR CARD BUILDER
+// ═══════════════════════════════════════════════════════
+function statusPill(s) {
+  const cfg = {
+    healthy:{cls:'sp-green',dot:'sp-pulse',lbl:'Healthy'},
+    warn:   {cls:'sp-orange',dot:'sp-pulse',lbl:'Warning'},
+    error:  {cls:'sp-red',   dot:'',       lbl:'Error'},
+    offline:{cls:'sp-dim',   dot:'',       lbl:'Offline'},
+    pending:{cls:'sp-yellow',dot:'sp-pulse',lbl:'Pending'},
+  };
+  const c = cfg[s]||cfg.healthy;
+  return `<span class="status-pill ${c.cls}"><span class="sp-dot ${c.dot}"></span>${c.lbl}</span>`;
+}
+
+function blastColor(n) {
+  return n>=80?'var(--red)':n>=50?'var(--orange)':n>=30?'var(--orange)':'var(--cisco-blue)';
+}
+
+function buildCard(c, delay=0) {
+  const metricCells = Object.entries(c.metrics).map(([k,v])=>
+    `<div class="ccm-cell"><div class="ccm-label">${k}</div><div class="ccm-val ${v.includes('expired')||v.includes('Error')?'red':''}">${v}</div></div>`
+  ).join('');
+
+  return `
+  <div class="connector-card status-${c.status}" style="animation-delay:${delay}s" data-id="${c.id}">
+    <div class="cc-head">
+      <div class="cc-icon" style="background:${c.iconBg}">${c.icon}</div>
+      <div class="cc-meta">
+        <div class="cc-name">${c.name}</div>
+        <div class="cc-type">${c.type}</div>
+        <div style="margin-top:5px"><span class="tag tag-dim" style="font-size:9px;padding:2px 6px">${c.target}</span></div>
+      </div>
+      <div class="cc-status">${statusPill(c.status)}</div>
+    </div>
+    <div class="cc-body">
+      <div class="flow-chips">${flowChips(c.flows)}</div>
+      <div class="cc-metrics">${metricCells}</div>
+      <div class="blast-radius">
+        <div class="br-label">Impact</div>
+        <div class="br-track"><div class="br-fill" style="width:${c.blastRadius}%;background:${blastColor(c.blastRadius)}"></div></div>
+        <div class="br-val" style="color:${blastColor(c.blastRadius)}">${c.blastRadius}</div>
+        <div class="br-note">${c.blastNote}</div>
+      </div>
+    </div>
+    <div class="cc-footer">
+      <div class="cf-last">Last data <b>${c.lastSeen}</b> · Uptime <b>${c.uptime}</b>${c.errors?' · <span style="color:var(--orange)">'+c.errors+' errors</span>':''}</div>
+      <div class="cf-actions">
+        <button class="icon-btn" title="Test connection" onclick="testConnector('${c.id}')">⟳</button>
+        <button class="icon-btn" title="Edit settings" onclick="editConnector('${c.id}')">✎</button>
+        <button class="icon-btn" title="View scopes" onclick="viewScopes('${c.id}')">◈</button>
+        <button class="icon-btn danger" title="Disable connector">⏹</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER CONNECTORS
+// ═══════════════════════════════════════════════════════
+function renderConnectors() {
+  const groups = { cisco:'ciscoGrid', netflow:'netflowGrid', ot:'otGrid', syslog:'syslogGrid' };
+  Object.entries(groups).forEach(([grp, elId]) => {
+    const el = document.getElementById(elId);
+    const cards = CONNECTORS.filter(c=>c.group===grp);
+    el.innerHTML = cards.map((c,i)=>buildCard(c,i*0.06)).join('');
+  });
+
+  const counts = { healthy:0, warn:0, error:0, offline:0 };
+  CONNECTORS.forEach(c=>counts[c.status]=(counts[c.status]||0)+1);
+  ['healthy','warn','error','offline'].forEach(s=>{
+    const el = document.getElementById(`sh-${s}`);
+    if(el) el.textContent = counts[s]||0;
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER CREDENTIALS TABLE
+// ═══════════════════════════════════════════════════════
+function renderCredentials() {
+  const tbody = document.getElementById('credTableBody');
+  tbody.innerHTML = CREDENTIALS.map(c=>{
+    const isWarn  = c.status==='warn';
+    const isError = c.status==='error';
+    const scopeTags = c.scopes.map(s=>`<span class="tag tag-dim">${s}</span>`).join('');
+    const expiresCls = isError?'red':isWarn?'orange':'';
+    return `
+    <tr>
+      <td><span class="cred-name">${c.name}</span></td>
+      <td><span style="font-size:10px;color:var(--g50)">${c.type}</span></td>
+      <td><span style="font-size:11px;color:var(--g70)">${c.usedBy}</span></td>
+      <td><div class="cred-scope">${scopeTags}</div></td>
+      <td><span class="masked" style="font-size:10px">••••••••</span> <span style="font-size:9px;color:var(--g50)">${c.rotated}</span></td>
+      <td><span class="ccm-val ${expiresCls}" style="font-size:10px">${c.expires} ${isWarn||isError?'<span class="rotate-warn">⚠</span>':''}</span>${c.warnMsg?`<br><span style="font-size:9px;color:${isError?'var(--red)':'var(--orange)'}">${c.warnMsg}</span>`:''}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="icon-btn btn-sm" title="Rotate" style="width:22px;height:22px;font-size:10px">⟳</button>
+          <button class="icon-btn btn-sm" title="View" style="width:22px;height:22px;font-size:10px">◎</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER INGESTION SETTINGS
+// ═══════════════════════════════════════════════════════
+function renderIngestion() {
+  document.getElementById('ingestionContent').innerHTML = `
+  <div class="settings-grid">
+
+    <div class="settings-card">
+      <div class="sc-head"><span style="font-size:16px">⬡</span><div class="sc-title">NetFlow / IPFIX</div></div>
+      <div class="sc-body">
+        ${fieldRow('Listen Port','2055 UDP','',true)}
+        ${fieldRow('Export Protocol','NetFlow v9 / IPFIX','')}
+        ${fieldRow('Active Cache Timeout','60 seconds','')}
+        ${fieldRow('Inactive Timeout','15 seconds','')}
+        ${fieldRow('Template Refresh','Every 60s','')}
+        ${fieldRow('VLAN Scope Filter','10,20,30,40,50,99,100,101,102,103,200','')}
+        ${fieldRow('Rate Limit','Unlimited','')}
+        ${fieldRow('Sampler Export','Enabled','',false,true)}
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <div class="sc-head"><span style="font-size:16px">🔐</span><div class="sc-title">ISE pxGrid</div></div>
+      <div class="sc-body">
+        ${fieldRow('Poll Interval','5 seconds','')}
+        ${fieldRow('Reconnect On Failure','Enabled','',false,true)}
+        ${fieldRow('Session TTL','300 seconds','')}
+        ${fieldRow('SGT Mapping Sync','Every 60s','')}
+        ${fieldRow('ANC Policy Sync','On change','')}
+        ${fieldRow('Posture Events','Include','')}
+        ${fieldRow('RADIUS Accounting','Ingest','')}
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <div class="sc-head"><span style="font-size:16px">⚙</span><div class="sc-title">OT / Modbus SPAN</div></div>
+      <div class="sc-body">
+        ${fieldRow('Capture Interface','eth1 (SPAN)','')}
+        ${fieldRow('Modbus Port','502 TCP','')}
+        ${fieldRow('DNP3 Port','20000 TCP/UDP','')}
+        ${fieldRow('EtherNet/IP Port','44818 TCP','')}
+        ${fieldRow('OPC-UA Port','4840 TCP','')}
+        ${fieldRow('Capture Filter','tcp port 502 or 20000 or 44818','')}
+        ${fieldRow('Write FC Alert Threshold','Any FC 5,6,15,16','')}
+        ${fieldRow('Alert on Unknown Source','Enabled','',false,true)}
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <div class="sc-head"><span style="font-size:16px">📋</span><div class="sc-title">Syslog</div></div>
+      <div class="sc-body">
+        ${fieldRow('Listen Port','514 UDP (5514 no-root)','')}
+        ${fieldRow('Max Message Size','64KB','')}
+        ${fieldRow('Buffer Size','4MB','')}
+        ${fieldRow('Parse Cisco IOS','Enabled','',false,true)}
+        ${fieldRow('Parse Cisco ASA','Enabled','',false,true)}
+        ${fieldRow('Parse ISE Auth','Enabled','',false,true)}
+        ${fieldRow('Drop Duplicates','Within 5s window','',false,true)}
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <div class="sc-head"><span style="font-size:16px">🌐</span><div class="sc-title">Catalyst Center</div></div>
+      <div class="sc-body">
+        ${fieldRow('Poll Interval','300 seconds','')}
+        ${fieldRow('Topology Sync','On topology change','')}
+        ${fieldRow('Inventory Sync','Every 5 min','')}
+        ${fieldRow('Site Filter','HQ-London, HQ-Factory','')}
+        ${fieldRow('Include Wireless','Enabled','',false,true)}
+        ${fieldRow('API Timeout','30 seconds','')}
+        ${fieldRow('Retry Backoff','Exponential 2x','')}
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <div class="sc-head"><span style="font-size:16px">⚙</span><div class="sc-title">SCADA REST API</div></div>
+      <div class="sc-body">
+        ${fieldRow('Base URL','http://192.168.102.11:9001','')}
+        ${fieldRow('Poll Interval','1 second','')}
+        ${fieldRow('Endpoints','/api/process-values, /api/alarms','')}
+        ${fieldRow('Timeout','5 seconds','')}
+        ${fieldRow('Alarm Threshold Breach','Forward to anomaly engine','',false,true)}
+        ${fieldRow('Auth','None (internal network)','')}
+      </div>
+    </div>
+
+  </div>`;
+}
+
+function fieldRow(label, val, sub, isToggle=false, toggleOn=false) {
+  const right = isToggle
+    ? `<div class="toggle-wrap"><div class="toggle ${toggleOn?'on':'off'}" onclick="this.classList.toggle('on');this.classList.toggle('off')"><div class="toggle-knob"></div></div></div>`
+    : `<span class="field-val">${val}</span>`;
+  return `<div class="field-row">
+    <div class="field-label">${label}${sub?`<span class="field-sub">${sub}</span>`:''}  </div>
+    ${right}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER MAPPING RULES
+// ═══════════════════════════════════════════════════════
+function renderMapping() {
+  const zoneTag = (z) => {
+    const cls = {it:'zone-it',ot:'zone-ot',mgmt:'zone-mgmt',dmz:'zone-dmz'}[z]||'zone-it';
+    return `<span class="map-zone ${cls}">${z.toUpperCase()}</span>`;
+  };
+
+  document.getElementById('mappingContent').innerHTML = `
+  <div>
+    <div class="section-label">VLAN → Site / Zone / Department</div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)">
+    <table class="mapping-table">
+      <thead><tr><th>VLAN ID</th><th>→ Name</th><th>Site</th><th>Zone</th><th>Department</th><th></th></tr></thead>
+      <tbody>
+        ${MAPPINGS.vlan.map(r=>`<tr>
+          <td><span class="map-val map-src">${r.src}</span></td>
+          <td><span class="map-arrow">→</span><span class="map-val map-dst">${r.dst}</span></td>
+          <td><span style="font-size:11px;color:var(--g50)">${r.site}</span></td>
+          <td>${zoneTag(r.zone)}</td>
+          <td><span style="font-size:11px">${r.dept}</span></td>
+          <td><div style="display:flex;gap:4px"><button class="icon-btn btn-sm" style="width:22px;height:22px;font-size:10px">✎</button><button class="icon-btn btn-sm danger" style="width:22px;height:22px;font-size:10px">✕</button></div></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <div>
+    <div class="section-label" style="margin-top:8px">SGT Tag → Zone / Access Policy</div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)">
+    <table class="mapping-table">
+      <thead><tr><th>SGT Tag</th><th>→ Name</th><th>Zone</th><th>Access Policy</th><th></th></tr></thead>
+      <tbody>
+        ${MAPPINGS.sgt.map(r=>`<tr>
+          <td><span class="map-val map-src">${r.src}</span></td>
+          <td><span class="map-arrow">→</span><span class="map-val map-dst">${r.dst}</span></td>
+          <td>${zoneTag(r.zone)}</td>
+          <td><span style="font-size:11px;color:var(--g50)">${r.access}</span></td>
+          <td><div style="display:flex;gap:4px"><button class="icon-btn btn-sm" style="width:22px;height:22px;font-size:10px">✎</button></div></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER API REFERENCE
+// ═══════════════════════════════════════════════════════
+function renderAPI() {
+  const nav = document.getElementById('apiNav');
+  nav.className = 'api-nav';
+  nav.innerHTML = `
+    <div class="api-nav-group">Base URL</div>
+    <div style="font-size:10px;font-weight:600;color:var(--cisco-blue);padding:6px 10px;background:var(--cisco-bg);border:1px solid rgba(4,159,217,.2);border-radius:4px;margin-bottom:4px;word-break:break-all">http://10.200.0.100/api/v1</div>
+    <div style="font-size:10px;color:var(--g50);padding:4px 10px;margin-bottom:8px">Auth: Bearer token in header</div>
+    ${API_ENDPOINTS.map(g=>`
+      <div class="api-nav-group">${g.group}</div>
+      ${g.endpoints.map(e=>`<div class="api-nav-item" onclick="scrollToEndpoint('${e.path}')">
+        <span style="font-size:9px;opacity:.7">${e.method}</span> ${e.path.replace('/api/v1','').split('/').pop()||'/'}
+      </div>`).join('')}
+    `).join('')}
+  `;
+
+  const epDiv = document.getElementById('apiEndpoints');
+  epDiv.innerHTML = API_ENDPOINTS.map(g=>`
+    <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--g50);margin-bottom:8px;margin-top:4px">${g.group}</div>
+    ${g.endpoints.map(e=>`
+    <div class="api-endpoint" id="ep-${e.path.replace(/[^a-z0-9]/gi,'-')}">
+      <div class="ae-head" onclick="toggleEndpoint(this)">
+        <span class="method m-${e.method.toLowerCase()}">${e.method}</span>
+        <span class="ae-path">${e.path}</span>
+        <span class="ae-desc">${e.desc}</span>
+      </div>
+      <div class="ae-body">
+        ${e.params.length?`
+        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--g50);margin-bottom:6px">Parameters</div>
+        <table class="param-table">
+          <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>${e.params.map(p=>`<tr>
+            <td><span class="param-name">${p.name}</span></td>
+            <td><span class="param-type">${p.type}</span></td>
+            <td>${p.req?'<span class="param-req">●</span>':'<span style="color:var(--g50)">○</span>'}</td>
+            <td style="color:var(--g50)">${p.desc}</td>
+          </tr>`).join('')}</tbody>
+        </table>`:''
+        }
+        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--g50);margin-bottom:6px;margin-top:${e.params.length?'12px':'0'}">Example Response</div>
+        <div class="code-block">${syntaxHL(e.example)}</div>
+      </div>
+    </div>
+    `).join('')}
+  `).join('');
+}
+
+function syntaxHL(json) {
+  try {
+    const formatted = JSON.stringify(JSON.parse(json), null, 2);
+    return formatted
+      .replace(/"([^"]+)":/g,'<span class="key">"$1"</span>:')
+      .replace(/: "([^"]+)"/g,': <span class="str">"$1"</span>')
+      .replace(/: (\d+)/g,': <span class="num">$1</span>')
+      .replace(/: (true|false|null)/g,': <span class="kw">$1</span>');
+  } catch(e){ return json; }
+}
+
+function toggleEndpoint(head) {
+  const body = head.nextElementSibling;
+  body.classList.toggle('open');
+}
+function scrollToEndpoint(path) {
+  const id = 'ep-'+path.replace(/[^a-z0-9]/gi,'-');
+  const el = document.getElementById(id);
+  if(el){el.scrollIntoView({behavior:'smooth',block:'start'});el.querySelector('.ae-body').classList.add('open');}
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER AUDIT LOG
+// ═══════════════════════════════════════════════════════
+function renderAudit() {
+  document.getElementById('auditContent').innerHTML = `
+  <div class="activity-feed">
+    ${AUDIT_LOG.map(e=>{
+      const col = e.result==='error'?'var(--red)':e.result==='warn'?'var(--orange)':'var(--green)';
+      return `<div class="af-item">
+        <div class="af-dot" style="background:${col}"></div>
+        <div class="af-content">
+          <div class="af-msg"><b style="color:var(--g90)">${e.action}</b> → ${e.target}${e.detail?` <span style="color:var(--orange);font-size:10px">(${e.detail})</span>`:''}</div>
+          <div class="af-meta">
+            <span class="af-time">${e.ts}</span>
+            <span class="af-src">${e.actor}</span>
+            <span class="tag tag-${e.result==='error'?'red':e.result==='warn'?'orange':'green'}" style="font-size:8px">${e.result}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════════
+const VIEWS = ['connectors','credentials','ingestion','mapping','api','webhooks','users','audit'];
+
+
+function activateNav(el, view) {
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('on'));
+  el.classList.add('on');
+
+  VIEWS.forEach(v=>{
+    const vEl = document.getElementById('view-'+v);
+    if(!vEl) return;
+    if(v===view) {
+      vEl.style.display = 'block';
+    } else {
+      vEl.style.display = 'none';
+    }
+  });
+
+  if(view==='credentials') renderCredentials();
+  if(view==='ingestion')   renderIngestion();
+  if(view==='mapping')     renderMapping();
+  if(view==='api')         renderAPI();
+  if(view==='audit')       renderAudit();
+}
+
+function setSubTab(btn, tab) {
+  document.querySelectorAll('.st').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const show = tab==='all'?'':tab;
+  document.querySelectorAll('.connector-card').forEach(c=>{
+    const id = c.dataset.id;
+    const conn = CONNECTORS.find(x=>x.id===id);
+    if(!conn) return;
+    const visible = !show || conn.group===show;
+    c.style.display = visible?'':'none';
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════════════
+function openModal(type) {
+  const overlay = document.getElementById('modalOverlay');
+  const title   = document.getElementById('modalTitle');
+  const body    = document.getElementById('modalBody');
+  const foot    = document.getElementById('modalFoot');
+
+  if(type==='add-connector') {
+    title.textContent = 'Add Connector';
+    body.innerHTML = `
+      <div class="form-group">
+        <label class="form-label">Connector Type <span>*</span></label>
+        <select class="form-select">
+          <option>Cisco ISE — pxGrid</option>
+          <option>Catalyst Center — RESTCONF</option>
+          <option>Cisco Firepower FMC</option>
+          <option>Cisco SecureX / XDR</option>
+          <option>NetFlow / IPFIX Exporter</option>
+          <option>Syslog Receiver</option>
+          <option>OT SPAN Capture</option>
+          <option>SCADA REST API</option>
+          <option>Custom — REST</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Display Name <span>*</span></label>
+          <input class="form-input" placeholder="e.g. ISE Branch Office">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target Host <span>*</span></label>
+          <input class="form-input" placeholder="hostname or IP:port">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Credential <span>*</span></label>
+        <select class="form-select">
+          <option>ISE-pxGrid (certificate)</option>
+          <option>FMC-API-Key</option>
+          <option>DNAC-Token</option>
+          <option>— Add new credential —</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Poll Interval (s)</label>
+          <input class="form-input" value="60">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Enabled</label>
+          <div class="toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')" style="margin-top:8px"><div class="toggle-knob"></div></div>
+        </div>
+      </div>
+      <div id="testResultArea" style="display:none">
+        <div class="test-bar"><div class="test-fill" id="testBar"></div></div>
+        <div class="test-status" id="testStatus">Testing...</div>
+      </div>
+      <div class="form-hint">Connector will validate credentials and test connectivity before saving. See <span style="color:var(--cisco-blue);cursor:pointer">API docs</span> for automation via POST /api/v1/connectors.</div>
+    `;
+    foot.innerHTML = `
+      <button class="btn btn-sm btn-sec" onclick="runConnectorTest()">⟳ Test Connection</button>
+      <button class="btn btn-sm btn-sec" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-sm btn-pri">Save Connector</button>
+    `;
+  }
+
+  else if(type==='activity') {
+    title.textContent = 'Activity Log';
+    renderAudit();
+    body.innerHTML = document.getElementById('auditContent').innerHTML;
+    foot.innerHTML = `<button class="btn btn-sm btn-sec" onclick="closeModal()">Close</button>`;
+  }
+
+  else if(type==='add-cred') {
+    title.textContent = 'Store Credential';
+    body.innerHTML = `
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Name <span>*</span></label>
+          <input class="form-input" placeholder="e.g. ISE-pxGrid-Branch">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type <span>*</span></label>
+          <select class="form-select">
+            <option>Shared Secret</option>
+            <option>API Key</option>
+            <option>Bearer Token</option>
+            <option>OAuth 2.0</option>
+            <option>Certificate + Key</option>
+            <option>SNMP Community</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Secret Value <span>*</span></label>
+        <input class="form-input" type="password" placeholder="Paste secret — stored encrypted at rest">
+        <div class="form-hint" style="margin-top:4px">AES-256 encrypted. Value is write-only — cannot be read back after saving.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rotation Reminder (days)</label>
+        <input class="form-input" value="90" placeholder="0 = no reminder">
+      </div>
+    `;
+    foot.innerHTML = `
+      <button class="btn btn-sm btn-sec" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-sm btn-pri">Store Credential</button>
+    `;
+  }
+
+  else if(type==='add-mapping') {
+    title.textContent = 'Add Mapping Rule';
+    body.innerHTML = `
+      <div class="form-group">
+        <label class="form-label">Rule Type <span>*</span></label>
+        <select class="form-select">
+          <option>VLAN ID → Zone / Site</option>
+          <option>SGT Tag → Policy Group</option>
+          <option>IP Range → Site</option>
+          <option>OT IP → Purdue Level</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Source Value <span>*</span></label>
+          <input class="form-input" placeholder="e.g. VLAN 200 or 10.50.0.0/24">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Display Name <span>*</span></label>
+          <input class="form-input" placeholder="e.g. Guest Network">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Zone</label>
+          <select class="form-select">
+            <option>IT</option><option>OT</option><option>DMZ</option><option>Management</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Site</label>
+          <input class="form-input" placeholder="e.g. HQ-London">
+        </div>
+      </div>
+    `;
+    foot.innerHTML = `
+      <button class="btn btn-sm btn-sec" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-sm btn-pri">Add Rule</button>
+    `;
+  }
+
+  overlay.classList.add('open');
+}
+
+function closeModal(e) {
+  if(e && e.target!==document.getElementById('modalOverlay')) return;
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function runConnectorTest() {
+  const area = document.getElementById('testResultArea');
+  area.style.display='block';
+  const bar = document.getElementById('testBar');
+  const status = document.getElementById('testStatus');
+  status.style.color='var(--cisco-blue)'; status.textContent='Connecting...';
+  let w=0;
+  const iv = setInterval(()=>{
+    w=Math.min(w+Math.random()*15,100);
+    bar.style.width=w+'%';
+    if(w<30) status.textContent='Connecting...';
+    else if(w<60) status.textContent='Authenticating...';
+    else if(w<85) status.textContent='Testing pxGrid handshake...';
+    else if(w>=100){
+      clearInterval(iv);
+      status.textContent='✓ Connection successful · Latency 22ms';
+      status.style.color='var(--green)';
+    }
+  },120);
+}
+
+function testConnector(id) {
+  const c = CONNECTORS.find(x=>x.id===id);
+  if(!c) return;
+  alert(`Testing ${c.name}...\n\nIn production this calls POST /api/v1/connectors/${id}/test`);
+}
+function editConnector(id) {
+  openModal('add-connector');
+  document.getElementById('modalTitle').textContent = 'Edit Connector';
+}
+function viewScopes(id) {
+  const c = CONNECTORS.find(x=>x.id===id);
+  if(!c) return;
+  const title = document.getElementById('modalTitle');
+  const body  = document.getElementById('modalBody');
+  const foot  = document.getElementById('modalFoot');
+  title.textContent = `${c.name} — Scopes & Permissions`;
+  body.innerHTML = `
+    <div class="form-hint" style="margin-bottom:12px">Scopes granted to NetDNA for this connector. Reducing scope narrows blast radius if credentials are compromised.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${c.scopes.map(s=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--g05);border:1px solid var(--border);border-radius:var(--r)">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--cisco-blue)">${s}</div>
+            <div style="font-size:10px;color:var(--g50);margin-top:2px">Read access · Required for ${c.flows.join(', ')}</div>
+          </div>
+          <div class="toggle on"><div class="toggle-knob"></div></div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="margin-top:16px;padding:10px 12px;background:var(--orange-lt);border:1px solid rgba(247,129,10,.2);border-radius:var(--r)">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--orange);margin-bottom:4px">Blast Radius: ${c.blastRadius}</div>
+      <div style="font-size:11px;color:var(--g50)">${c.blastNote}</div>
+    </div>
+  `;
+  foot.innerHTML = `<button class="btn btn-sm btn-pri" onclick="closeModal()">Done</button>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function saveIngestion() {
+  alert('Ingestion settings saved.\n\nIn production this calls PUT /api/v1/connectors/*/ingestion');
+}
+
+// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+renderConnectors();
+</script>
+</body>
+</html>

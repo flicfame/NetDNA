@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetDNA — API Documentation</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cisco-blue:#049FD9;--cisco-dk:#004BAF;
+  --g90:#1D1D1D;--g70:#58585B;--g50:#9E9EA2;--g10:#E8EBF1;--g05:#F5F6F8;
+  --red:#E2231A;--orange:#F7810A;--green:#00853E;
+  --border:#DDE1E7;--font:'Inter',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--g05);font-family:var(--font);font-size:13px;
+  -webkit-font-smoothing:antialiased;}
+
+.layout{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 52px);}
+
+/* Sidebar */
+.sidebar{background:#fff;border-right:1px solid var(--border);
+  padding:20px 0;position:sticky;top:52px;height:calc(100vh - 52px);
+  overflow-y:auto;}
+.sidebar-group{margin-bottom:20px;}
+.sidebar-group-title{font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--g50);padding:0 18px;margin-bottom:6px;}
+.sidebar-item{display:block;padding:7px 18px;font-size:12px;font-weight:500;
+  color:var(--g70);cursor:pointer;transition:all .1s;text-decoration:none;}
+.sidebar-item:hover{background:var(--g05);color:var(--g90);}
+.sidebar-item.active{background:#EBF5FB;color:var(--cisco-dk);
+  border-right:2px solid var(--cisco-blue);}
+
+/* Content */
+.content{padding:28px 36px;max-width:900px;}
+
+.page-title{font-size:22px;font-weight:800;color:var(--g90);margin-bottom:4px;}
+.page-sub{font-size:13px;color:var(--g50);margin-bottom:28px;}
+
+.section{margin-bottom:40px;}
+.section-title{font-size:16px;font-weight:700;color:var(--g90);
+  margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--g10);}
+
+/* Endpoint card */
+.endpoint{background:#fff;border:1px solid var(--border);border-radius:6px;
+  margin-bottom:14px;overflow:hidden;}
+.ep-header{display:flex;align-items:center;gap:12px;padding:13px 18px;
+  cursor:pointer;transition:background .1s;border-bottom:1px solid transparent;}
+.ep-header:hover{background:var(--g05);}
+.ep-header.open{border-bottom-color:var(--g10);}
+.method{font-family:var(--mono);font-size:11px;font-weight:600;
+  padding:3px 8px;border-radius:4px;letter-spacing:.5px;flex-shrink:0;}
+.m-get {background:#E6F4EE;color:var(--green);}
+.m-post{background:#EBF5FB;color:var(--cisco-dk);}
+.m-put {background:#FEF9EC;color:#B08000;}
+.m-del {background:var(--red-lt);color:var(--red);}
+.ep-path{font-family:var(--mono);font-size:12px;color:var(--g90);font-weight:500;}
+.ep-desc{font-size:12px;color:var(--g50);margin-left:auto;}
+.ep-auth{font-size:10px;padding:2px 6px;border-radius:3px;
+  background:#EBF5FB;color:var(--cisco-dk);flex-shrink:0;}
+
+.ep-body{padding:16px 18px;display:none;}
+.ep-body.open{display:block;}
+
+.param-table{width:100%;border-collapse:collapse;margin-bottom:14px;}
+.param-table th{font-size:10px;font-weight:600;color:var(--g50);
+  text-transform:uppercase;letter-spacing:.5px;
+  padding:6px 10px;text-align:left;background:var(--g05);
+  border-bottom:1px solid var(--border);}
+.param-table td{padding:8px 10px;border-bottom:1px solid var(--g10);
+  font-size:12px;vertical-align:top;}
+.param-table tr:last-child td{border-bottom:none;}
+.param-name{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--cisco-dk);}
+.param-req{font-size:9px;padding:1px 5px;border-radius:3px;
+  background:var(--red-lt);color:var(--red);margin-left:4px;}
+.param-opt{font-size:9px;padding:1px 5px;border-radius:3px;
+  background:var(--g10);color:var(--g50);margin-left:4px;}
+
+.example-title{font-size:10px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.5px;color:var(--g50);margin-bottom:6px;}
+.code-block{background:#1D1D1D;border-radius:5px;padding:14px 16px;
+  font-family:var(--mono);font-size:11px;line-height:1.7;
+  color:#e0e0e0;overflow-x:auto;white-space:pre;}
+.code-block .str{color:#98c379;}
+.code-block .key{color:#e06c75;}
+.code-block .num{color:#d19a66;}
+.code-block .kw {color:#c678dd;}
+.code-block .com{color:#5c6370;}
+.try-btn{font-size:11px;padding:5px 12px;background:var(--cisco-blue);
+  color:#fff;border:none;border-radius:4px;cursor:pointer;
+  font-family:var(--font);margin-top:10px;transition:background .15s;}
+.try-btn:hover{background:var(--cisco-md);}
+.try-result{margin-top:10px;display:none;}
+.try-result.show{display:block;}
+
+/* Auth info box */
+.auth-box{background:#EBF5FB;border:1px solid var(--cisco-blue);
+  border-radius:6px;padding:16px 18px;margin-bottom:20px;}
+.auth-box-title{font-size:12px;font-weight:700;color:var(--cisco-dk);margin-bottom:8px;}
+.auth-box p{font-size:12px;color:var(--g70);line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div id="navMount"></div>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-group">
+      <div class="sidebar-group-title">Getting Started</div>
+      <a class="sidebar-item active" href="#auth">Authentication</a>
+      <a class="sidebar-item" href="#base-url">Base URL</a>
+    </div>
+    <div class="sidebar-group">
+      <div class="sidebar-group-title">Endpoints</div>
+      <a class="sidebar-item" href="#auth-endpoints">Auth</a>
+      <a class="sidebar-item" href="#dashboard">Dashboard</a>
+      <a class="sidebar-item" href="#anomalies">Anomalies</a>
+      <a class="sidebar-item" href="#entities">Entities</a>
+      <a class="sidebar-item" href="#flows">Flows</a>
+      <a class="sidebar-item" href="#topology">Topology</a>
+      <a class="sidebar-item" href="#quarantine">Quarantine</a>
+      <a class="sidebar-item" href="#users">Users</a>
+    </div>
+    <div class="sidebar-group">
+      <div class="sidebar-group-title">Reference</div>
+      <a class="sidebar-item" href="#roles">Role Permissions</a>
+      <a class="sidebar-item" href="/api/docs" target="_blank">Interactive Docs ↗</a>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+    <div class="page-title">NetDNA API Reference</div>
+    <div class="page-sub">REST API v1 · All endpoints require authentication unless noted</div>
+
+    <!-- Auth info -->
+    <div id="auth" class="auth-box">
+      <div class="auth-box-title">🔐 Authentication</div>
+      <p>All API requests must include a JWT Bearer token in the Authorization header.<br>
+      Obtain a token via <code style="font-family:JetBrains Mono;font-size:11px;background:rgba(4,159,217,.1);padding:1px 5px;border-radius:3px">POST /api/v1/auth/login</code> with your credentials.<br><br>
+      <strong>Header format:</strong> <code style="font-family:JetBrains Mono;font-size:11px;background:rgba(4,159,217,.1);padding:1px 5px;border-radius:3px">Authorization: Bearer &lt;token&gt;</code></p>
+    </div>
+
+    <!-- Auth endpoints -->
+    <div id="auth-endpoints" class="section">
+      <div class="section-title">Authentication</div>
+
+      <div class="endpoint">
+        <div class="ep-header" onclick="toggle(this)">
+          <span class="method m-post">POST</span>
+          <span class="ep-path">/api/v1/auth/login</span>
+          <span class="ep-desc">Authenticate and receive JWT token</span>
+        </div>
+        <div class="ep-body">
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><span class="param-name">username</span><span class="param-req">required</span></td><td>string</td><td>Your NetDNA username</td></tr>
+              <tr><td><span class="param-name">password</span><span class="param-req">required</span></td><td>string</td><td>Your password</td></tr>
+            </tbody>
+          </table>
+          <div class="example-title">Request</div>
+          <div class="code-block">curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"username":"admin","password":"netdna2024"}'</span></div>
+          <div class="example-title" style="margin-top:12px">Response</div>
+          <div class="code-block">{
+  <span class="key">"access_token"</span>: <span class="str">"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."</span>,
+  <span class="key">"token_type"</span>: <span class="str">"bearer"</span>,
+  <span class="key">"user"</span>: {
+    <span class="key">"username"</span>: <span class="str">"admin"</span>,
+    <span class="key">"role"</span>: <span class="str">"admin"</span>,
+    <span class="key">"permissions"</span>: [<span class="str">"view_dashboard"</span>, <span class="str">"quarantine"</span>, ...]
+  }
+}</div>
+          <button class="try-btn" onclick="tryLogin()">▶ Try It</button>
+          <div class="try-result" id="loginResult">
+            <div class="code-block" id="loginOutput"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="ep-header" onclick="toggle(this)">
+          <span class="method m-get">GET</span>
+          <span class="ep-path">/api/v1/auth/me</span>
+          <span class="ep-desc">Get current user info</span>
+          <span class="ep-auth">🔒 Auth required</span>
+        </div>
+        <div class="ep-body">
+          <div class="code-block">curl http://localhost:8000/api/v1/auth/me \
+  -H <span class="str">"Authorization: Bearer &lt;token&gt;"</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="section">
+      <div class="section-title">Dashboard</div>
+      <div class="endpoint">
+        <div class="ep-header" onclick="toggle(this)">
+          <span class="method m-get">GET</span>
+          <span class="ep-path">/api/v1/dashboard</span>
+          <span class="ep-desc">Live KPI stats — poll every 5 seconds</span>
+          <span class="ep-auth">🔒 view_dashboard</span>
+        </div>
+        <div class="ep-body">
+          <div class="code-block">{
+  <span class="key">"flows_last_hour"</span>:    <span class="num">284621</span>,
+  <span class="key">"flows_per_sec"</span>:      <span class="num">79.1</span>,
+  <span class="key">"entities_monitored"</span>: <span class="num">248</span>,
+  <span class="key">"open_anomalies"</span>:     <span class="num">7</span>,
+  <span class="key">"critical_anomalies"</span>: <span class="num">2</span>,
+  <span class="key">"mttd_minutes"</span>:       <span class="num">4.2</span>
+}</div>
+          <button class="try-btn" onclick="tryEndpoint('/dashboard','dashResult','dashOutput')">▶ Try It</button>
+          <div class="try-result" id="dashResult"><div class="code-block" id="dashOutput"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Anomalies -->
+    <div id="anomalies" class="section">
+      <div class="section-title">Anomalies</div>
+
+      <div class="endpoint">
+        <div class="ep-header" onclick="toggle(this)">
+          <span class="method m-get">GET</span>
+          <span class="ep-path">/api/v1/anomalies</span>
+          <span class="ep-desc">List anomaly alerts</span>
+          <span class="ep-auth">🔒 view_alerts</span>
+        </div>
+        <div class="ep-body">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><span class="param-name">status_filter</span><span class="param-opt">optional</span></td><td>string</td><td>open</td><td>open / investigating / closed</td></tr>
+              <tr><td><span class="param-name">severity</span><span class="param-opt">optional</span></td><td>string</td><td>—</td><td>critical / high / medium / low</td></tr>
+              <tr><td><span class="param-name">limit</span><span class="param-opt">optional</span></td><td>int</td><td>50</td><td>Max results (≤500)</td></tr>
+            </tbody>
+          </table>
+          <button class="try-btn" onclick="tryEndpoint('/anomalies','anomResult','anomOutput')">▶ Try It</button>
+          <div class="try-result" id="anomResult"><div class="code-block" id="anomOutput"></div></div>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="ep-header" onclick="toggle(this)">
+          <span class="method m-post">POST</span>
+          <span class="ep-path">/api/v1/anomalies/{id}/status</span>
+          <span class="ep-desc">Update alert status</span>
+          <span class="ep-auth">🔒 update_alerts</span>
+        </div>
+        <div class="ep-body">
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><span class="param-name">status</span><span class="param-req">required</span></td><td>string</td><td>open / investigating / closed</td></tr>
+              <tr><td><span class="param-name">assigned_to</span><span class="param-opt">optional</span></td><td>string</td><td>Username to assign</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Entities -->
+    <div id="entities" class="section">
+      <div class="section-title">Entities</div>
+      <div class="endpoint">
+        <div class="ep-header" onclick="toggle(this)">
+          <span class="method m-get">GET</span>
+          <span class="ep-path">/api/v1/entities</span>
+          <span class="ep-desc">List entities with risk scores</span>
+          <span class="ep-auth">🔒 view_entities</span>
+        </div>
+        <div class="ep-body">
+          <button class="try-btn" onclick="tryEndpoint('/entities?limit=5','entResult','entOutput')">▶ Try It (top 5)</button>
+          <div class="try-result" id="entResult"><div class="code-block" id="entOutput"></div></div>
+        </div>
+      </div>
+      <div class="endpoint">
+        <div class="ep-header" onclick="toggle(this)">
+          <span class="method m-get">GET</span>
+          <span class="ep-path">/api/v1/entities/{ip}</span>
+          <span class="ep-desc">Entity detail with ISE context, anomalies, flows</span>
+          <span class="ep-auth">🔒 view_entities</span>
+        </div>
+        <div class="ep-body">
+          <div class="code-block">GET /api/v1/entities/10.20.14.22</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flows -->
+    <div id="flows" class="section">
+      <div class="section-title">Flows</div>
+      <div class="endpoint">
+        <div class="ep-header" onclick="toggle(this)">
+          <span class="method m-get">GET</span>
+          <span class="ep-path">/api/v1/flows/stats</span>
+          <span class="ep-desc">Aggregated stats: timeseries, protocols, VLANs</span>
+          <span class="ep-auth">🔒 view_flows</span>
+        </div>
+        <div class="ep-body">
+          <table class="param-table">
+            <thead><tr><th>Parameter</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><span class="param-name">minutes</span></td><td>60</td><td>Lookback window (max 1440)</td></tr>
+            </tbody>
+          </table>
+          <button class="try-btn" onclick="tryEndpoint('/flows/stats','flowResult','flowOutput')">▶ Try It</button>
+          <div class="try-result" id="flowResult"><div class="code-block" id="flowOutput"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quarantine -->
+    <div id="quarantine" class="section">
+      <div class="section-title">Quarantine</div>
+      <div class="endpoint">
+        <div class="ep-header" onclick="toggle(this)">
+          <span class="method m-post">POST</span>
+          <span class="ep-path">/api/v1/quarantine</span>
+          <span class="ep-desc">Isolate entity via ISE — Admin only</span>
+          <span class="ep-auth">🔒 quarantine</span>
+        </div>
+        <div class="ep-body">
+          <table class="param-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><span class="param-name">ip</span><span class="param-req">required</span></td><td>string</td><td>IP address to quarantine</td></tr>
+              <tr><td><span class="param-name">reason</span><span class="param-opt">optional</span></td><td>string</td><td>Reason for quarantine (logged)</td></tr>
+            </tbody>
+          </table>
+          <div class="code-block">curl -X POST http://localhost:8000/api/v1/quarantine \
+  -H <span class="str">"Authorization: Bearer &lt;token&gt;"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"ip":"10.20.14.22","reason":"Lateral movement detected"}'</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Roles -->
+    <div id="roles" class="section">
+      <div class="section-title">Role Permissions Reference</div>
+      <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+        <thead><tr style="background:var(--g05)">
+          <th style="padding:10px 14px;font-size:10px;font-weight:600;color:var(--g50);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);text-align:left">Permission</th>
+          <th style="padding:10px 14px;font-size:10px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Admin</th>
+          <th style="padding:10px 14px;font-size:10px;font-weight:600;color:var(--orange);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Analyst</th>
+          <th style="padding:10px 14px;font-size:10px;font-weight:600;color:var(--cisco-dk);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Viewer</th>
+        </tr></thead>
+        <tbody>
+          ${[
+            ['view_dashboard','View dashboard & KPIs'],
+            ['view_alerts','View anomaly alerts'],
+            ['update_alerts','Update alert status'],
+            ['view_entities','View entity risk scores'],
+            ['view_flows','View network flows'],
+            ['view_topology','View network topology'],
+            ['quarantine','Quarantine endpoints via ISE'],
+            ['manage_users','Create/edit/delete users'],
+            ['view_api_docs','Access API documentation'],
+            ['view_settings','Access settings'],
+          ].map(([p,d]) => `
+            <tr style="border-bottom:1px solid var(--g10)">
+              <td style="padding:9px 14px;font-family:JetBrains Mono,monospace;font-size:11px;color:var(--cisco-dk)">${p}<br><span style="font-family:Inter,sans-serif;font-size:11px;color:var(--g50)">${d}</span></td>
+              <td style="text-align:center;padding:9px 14px">✅</td>
+              <td style="text-align:center;padding:9px 14px">${['view_dashboard','view_alerts','update_alerts','view_entities','view_flows','view_topology','view_api_docs'].includes(p)?'✅':'—'}</td>
+              <td style="text-align:center;padding:9px 14px">${['view_dashboard','view_alerts','view_entities','view_flows','view_topology'].includes(p)?'✅':'—'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script>
+if (!Auth.guard()) throw new Error('Redirect');
+document.getElementById('navMount').innerHTML = renderNav('API Docs');
+document.head.insertAdjacentHTML('beforeend', `<style>${NAV_CSS}</style>`);
+
+function toggle(header) {
+  header.classList.toggle('open');
+  header.nextElementSibling.classList.toggle('open');
+}
+
+async function tryLogin() {
+  const res = document.getElementById('loginResult');
+  const out = document.getElementById('loginOutput');
+  res.classList.add('show');
+  out.textContent = 'Calling API...';
+  try {
+    const r = await fetch('/api/v1/auth/login', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username:'admin', password:'netdna2024'})
+    });
+    const data = await r.json();
+    out.textContent = JSON.stringify(data, null, 2);
+  } catch(e) { out.textContent = 'Error: ' + e.message; }
+}
+
+async function tryEndpoint(path, resId, outId) {
+  const res = document.getElementById(resId);
+  const out = document.getElementById(outId);
+  res.classList.add('show');
+  out.textContent = 'Calling API...';
+  try {
+    const data = await API.get(path);
+    const text = JSON.stringify(data, null, 2);
+    out.textContent = text.length > 2000 ? text.slice(0,2000) + '\n... (truncated)' : text;
+  } catch(e) { out.textContent = 'Error: ' + e.message; }
+}
+
+// Sidebar active on scroll
+document.querySelectorAll('.sidebar-item').forEach(item => {
+  item.addEventListener('click', function() {
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
